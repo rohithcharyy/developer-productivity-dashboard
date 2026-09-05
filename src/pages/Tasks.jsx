@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Navbar from "../components/layout/Navbar";
 import Sidebar from "../components/layout/Sidebar";
+import { createTask } from "../api/api";
 
 function Tasks({
   currentPage,
@@ -49,7 +50,7 @@ function Tasks({
       project: task.project,
       status: task.status,
       priority: task.priority,
-      dueDate: task.dueDate,
+      dueDate: task.dueDate || "",
     });
 
     setIsModalOpen(true);
@@ -85,9 +86,7 @@ function Tasks({
 
         const progress =
           totalTasks > 0
-            ? Math.round(
-                (completedTasks / totalTasks) * 100
-              )
+            ? Math.round((completedTasks / totalTasks) * 100)
             : 0;
 
         return {
@@ -103,14 +102,16 @@ function Tasks({
   // -----------------------------
   // Save Task
   // -----------------------------
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (!formData.title.trim()) {
       return;
     }
 
-    // Editing existing task
+    // -----------------------------
+    // Edit Existing Task
+    // -----------------------------
     if (editingTask) {
       const updatedTasks = tasks.map((task) =>
         task.id === editingTask.id
@@ -124,9 +125,7 @@ function Tasks({
               completedAt:
                 formData.status === "Done"
                   ? task.completedAt ||
-                    new Date()
-                      .toISOString()
-                      .split("T")[0]
+                    new Date().toISOString().split("T")[0]
                   : null,
             }
           : task
@@ -134,38 +133,64 @@ function Tasks({
 
       setTaskList(updatedTasks);
       updateProjectStats(updatedTasks);
+      setIsModalOpen(false);
+
+      return;
     }
 
-    // Creating new task
-    else {
-      const today = new Date()
-        .toISOString()
-        .split("T")[0];
+    // -----------------------------
+    // Create New Task
+    // -----------------------------
+    try {
+      const selectedProject = projects.find(
+        (project) => project.name === formData.project
+      );
 
-      const newTask = {
-        id: Date.now(),
+      if (!selectedProject) {
+        alert("Please select a valid project.");
+        return;
+      }
+
+      const newTaskData = {
         title: formData.title,
-        project: formData.project,
-        status: formData.status,
+        projectId: selectedProject.id,
+        status:
+          formData.status === "Done"
+            ? "Completed"
+            : formData.status,
         priority: formData.priority,
         dueDate: formData.dueDate,
-        createdAt: today,
-        completedAt:
-          formData.status === "Done"
-            ? today
-            : null,
+      };
+
+      const createdTask = await createTask(newTaskData);
+
+      // Convert backend response to the format
+      // currently used by the React UI
+      const taskForUI = {
+        ...createdTask,
+        project: selectedProject.name,
+        status:
+          createdTask.status === "Completed"
+            ? "Done"
+            : createdTask.status,
       };
 
       const updatedTasks = [
         ...tasks,
-        newTask,
+        taskForUI,
       ];
 
       setTaskList(updatedTasks);
       updateProjectStats(updatedTasks);
-    }
 
-    setIsModalOpen(false);
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Failed to create task:", error);
+
+      alert(
+        "Failed to create task. Make sure the backend is running."
+      );
+    }
   };
 
   // -----------------------------
@@ -257,9 +282,7 @@ function Tasks({
             <div className="mb-5">
               <p className="text-sm text-slate-500">
                 {tasks.length}{" "}
-                {tasks.length === 1
-                  ? "task"
-                  : "tasks"}{" "}
+                {tasks.length === 1 ? "task" : "tasks"}{" "}
                 in your workspace
               </p>
             </div>

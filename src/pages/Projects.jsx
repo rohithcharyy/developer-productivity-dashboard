@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createProject } from "../api/api";
 import Navbar from "../components/layout/Navbar";
 import Sidebar from "../components/layout/Sidebar";
 
@@ -56,52 +57,62 @@ function Projects({
     }));
   };
 
-  // Save project
-  const handleSubmit = (event) => {
-    event.preventDefault();
+ const handleSubmit = async (event) => {
+  event.preventDefault();
 
-    if (!formData.name.trim()) {
-      return;
-    }
+  if (!formData.name.trim()) {
+    return;
+  }
 
-    // Editing existing project
-    if (editingProject) {
-      setProjectList((previousProjects) =>
-        previousProjects.map((project) =>
-          project.id === editingProject.id
-            ? {
-                ...project,
-                name: formData.name,
-                description: formData.description,
-                status: formData.status,
-                priority: formData.priority,
-              }
-            : project
-        )
-      );
-    }
-
-    // Creating new project
-    else {
-      const newProject = {
-        id: Date.now(),
+  // Creating new project
+  if (!editingProject) {
+    try {
+      const createdProject = await createProject({
         name: formData.name,
         description: formData.description,
+        status: formData.status,
+        priority: formData.priority,
+      });
+
+      const projectForUI = {
+        ...createdProject,
         progress: 0,
         tasksCompleted: 0,
         totalTasks: 0,
-        status: formData.status,
-        priority: formData.priority,
       };
 
       setProjectList((previousProjects) => [
         ...previousProjects,
-        newProject,
+        projectForUI,
       ]);
+
+      setIsModalOpen(false);
+
+    } catch (error) {
+      console.error("Failed to create project:", error);
+      alert("Failed to create project. Make sure the backend is running.");
     }
 
-    setIsModalOpen(false);
-  };
+    return;
+  }
+
+  // Editing existing project
+  setProjectList((previousProjects) =>
+    previousProjects.map((project) =>
+      project.id === editingProject.id
+        ? {
+            ...project,
+            name: formData.name,
+            description: formData.description,
+            status: formData.status,
+            priority: formData.priority,
+          }
+        : project
+    )
+  );
+
+  setIsModalOpen(false);
+};
 
   // Delete project
   const handleDeleteProject = (projectId) => {
