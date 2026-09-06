@@ -81,7 +81,7 @@ src/
 └── main.jsx
 
 
-## Week 2 – Backend & API Integration
+### Week 2 – Backend & API Integration
 
 This week focused on building the backend foundation for the Developer Productivity Dashboard and integrating it with the React frontend.
 
