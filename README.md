@@ -2,17 +2,15 @@
 
 A web-based productivity dashboard designed to help developers manage projects, tasks, priorities, progress, and productivity insights.
 
-This project is being developed incrementally as part of my **DevOps learning journey**, with each week focusing on a different stage of the application development and deployment process.
+The project is being developed incrementally as part of my DevOps and full-stack development learning journey.
 
 ---
 
-# Week 1 – Frontend Development
-
-**Focus:** React Frontend & User Interface Development
+## Week 1 – Frontend Development
 
 Week 1 focused on designing and developing the frontend of the Developer Productivity Dashboard using React.
 
-## Work Completed
+### Work Completed
 
 * Set up the React project using Vite
 * Created the initial dashboard layout
@@ -20,10 +18,10 @@ Week 1 focused on designing and developing the frontend of the Developer Product
 * Created a sidebar for workspace navigation
 * Implemented project cards
 * Implemented task cards
-* Added statistics cards for productivity information
+* Added statistics cards
 * Created project and task management interfaces
-* Added **New Project** functionality
-* Added **New Task** functionality
+* Added New Project functionality
+* Added New Task functionality
 * Implemented dynamic task and project updates
 * Added search functionality
 * Added task filtering by:
@@ -31,16 +29,14 @@ Week 1 focused on designing and developing the frontend of the Developer Product
   * Status
   * Priority
   * Project
-* Implemented loading state
-* Implemented empty state
-* Implemented error state
+* Added loading, empty, and error states
 * Added Analytics page
 * Added Calendar page
 * Added Settings page
-* Improved responsive design and overall UI
+* Improved responsive design and UI
 * Organized the application into reusable React components
 
-## Frontend Structure
+### Frontend Structure
 
 ```text
 src/
@@ -72,6 +68,7 @@ src/
 │   └── dashboardData.js
 │
 ├── pages/
+│   ├── AIAssistant.jsx
 │   ├── Analytics.jsx
 │   ├── Calendar.jsx
 │   ├── Dashboard.jsx
@@ -79,76 +76,66 @@ src/
 │   ├── Settings.jsx
 │   └── Tasks.jsx
 │
+├── api/
+│   ├── api.js
+│   ├── projectApi.js
+│   └── taskApi.js
+│
 ├── App.jsx
 ├── index.css
 └── main.jsx
 ```
 
-## Week 1 Outcome
-
-The first week resulted in a **fully functional React frontend** with responsive UI, reusable components, project and task management, filtering, search, and multiple dashboard pages.
-
 ---
 
-# Week 2 – Backend & API Integration
+## Week 2 – Backend & API Integration
 
-**Focus:** Express.js Backend, REST APIs & Frontend-Backend Integration
+Week 2 focused on building the backend foundation and connecting the React frontend with an Express.js REST API.
 
-Week 2 focused on building the backend foundation of the Developer Productivity Dashboard and connecting it with the React frontend.
+### Work Completed
 
-## Work Completed
-
-### Backend Development
-
-* Set up an **Express.js backend**
+* Set up an Express.js backend
 * Created a structured backend architecture
 * Implemented REST API routes
-* Created controllers for:
-
-  * Users
-  * Projects
-  * Tasks
+* Created controllers for Users, Projects, and Tasks
 * Added JSON request and response handling
-* Implemented project management APIs
-* Implemented task management APIs
-* Implemented user management APIs
-
-### API Testing
-
-* Tested REST APIs using **Thunder Client**
-* Verified API request and response handling
-* Debugged API-related issues
-* Tested frontend-backend communication
-
-### Frontend Integration
-
+* Tested APIs using Thunder Client
 * Connected the React frontend with the Express backend
-* Integrated project APIs with the frontend
-* Integrated task APIs with the frontend
-* Implemented project and task management through the backend
+* Implemented project and task management through API requests
+* Added project and task CRUD operations
 * Tested and debugged frontend-backend communication
 
-## Backend Structure
+### Backend Structure
 
 ```text
 backend/
 ├── app.js
 ├── server.js
 │
+├── config/
+│   └── db.js
+│
 ├── controllers/
+│   ├── aiController.js
 │   ├── projectController.js
 │   ├── taskController.js
 │   └── userController.js
 │
+├── models/
+│   ├── Project.js
+│   ├── Task.js
+│   └── User.js
+│
 └── routes/
+    ├── aiRoutes.js
     ├── projectRoutes.js
     ├── taskRoutes.js
     └── userRoutes.js
 ```
 
-## REST API Endpoints
+### API Endpoints
 
-### Users API
+#### Users
 
 | Method | Endpoint         | Description    |
 | ------ | ---------------- | -------------- |
@@ -156,15 +143,17 @@ backend/
 | GET    | `/api/users/:id` | Get user by ID |
 | POST   | `/api/users`     | Create a user  |
 
-### Projects API
+#### Projects
 
 | Method | Endpoint            | Description       |
 | ------ | ------------------- | ----------------- |
 | GET    | `/api/projects`     | Get all projects  |
 | GET    | `/api/projects/:id` | Get project by ID |
 | POST   | `/api/projects`     | Create a project  |
+| PUT    | `/api/projects/:id` | Update a project  |
+| DELETE | `/api/projects/:id` | Delete a project  |
 
-### Tasks API
+#### Tasks
 
 | Method | Endpoint                | Description        |
 | ------ | ----------------------- | ------------------ |
@@ -172,6 +161,80 @@ backend/
 | GET    | `/api/tasks/:id`        | Get task by ID     |
 | POST   | `/api/tasks`            | Create a task      |
 | PATCH  | `/api/tasks/:id/status` | Update task status |
+| DELETE | `/api/tasks/:id`        | Delete a task      |
+
+---
+
+## Week 3 – Database & AI Integration
+
+Week 3 focused on replacing the temporary frontend data handling with persistent database storage and introducing AI-powered productivity analysis.
+
+### Database Integration
+
+* Integrated MongoDB Atlas
+* Added Mongoose for database interaction
+* Created MongoDB schemas/models for:
+
+  * Users
+  * Projects
+  * Tasks
+* Connected the Express backend to MongoDB Atlas
+* Implemented persistent project and task storage
+* Connected frontend project and task operations to the database
+* Verified that task and project updates are persisted in MongoDB
+* Added API-based data loading when the application starts
+
+### AI Integration
+
+* Integrated the Google Gemini API
+* Added a dedicated AI controller
+* Added AI API routes
+* Created an AI Productivity Coach
+* Added an AI Assistant page
+* AI analyzes workspace data from MongoDB
+* AI provides:
+
+  * Productivity summary
+  * Recommended focus task
+  * Priority recommendations
+  * Productivity risks
+  * Recommended actions
+* Added structured JSON responses for AI-generated insights
+* Added loading, error, retry, and regenerate states for AI insights
+
+### AI API
+
+```text
+GET /api/ai/insights
+```
+
+The endpoint retrieves projects and tasks from MongoDB and sends the workspace data to Gemini for analysis.
+
+### Current Application Flow
+
+```text
+React Frontend
+      │
+      ▼
+Frontend API Layer
+      │
+      ▼
+Express.js Backend
+      │
+      ├──────────────► MongoDB Atlas
+      │                  │
+      │                  └── Users
+      │                  └── Projects
+      │                  └── Tasks
+      │
+      └──────────────► Gemini API
+                         │
+                         ▼
+                  AI Productivity
+                      Insights
+```
+
+---
 
 ## Technologies Used
 
@@ -180,6 +243,7 @@ backend/
 * React
 * Vite
 * JavaScript
+* Tailwind CSS
 
 ### Backend
 
@@ -187,15 +251,70 @@ backend/
 * Express.js
 * REST APIs
 
-### Development & Testing
+### Database
 
+* MongoDB Atlas
+* Mongoose
+
+### AI
+
+* Google Gemini API
+* `@google/genai`
+
+### Development Tools
+
+* VS Code
 * Thunder Client
 * Git
 * GitHub
 
-## Week 2 Outcome
+---
 
-The project now has a **working Express.js backend with REST APIs and frontend-backend integration**.
+## Current Status
 
-The React application can communicate with the Express backend to perform project and task-related operations, establishing the backend foundation for the next stages of the DevOps learning journey.
+### Completed
 
+* [x] React frontend
+* [x] Responsive dashboard
+* [x] Project management
+* [x] Task management
+* [x] Search and filtering
+* [x] Analytics
+* [x] Calendar
+* [x] Settings
+* [x] Express.js backend
+* [x] REST API integration
+* [x] MongoDB Atlas integration
+* [x] Persistent project and task data
+* [x] Gemini AI integration
+* [x] AI Productivity Coach
+* [x] AI Assistant page
+
+### Planned
+
+* [ ] User authentication and login
+* [ ] Protected routes
+* [ ] User-specific workspace data
+* [ ] Improved account/profile management
+* [ ] Additional AI features
+* [ ] Deployment
+* [ ] Further testing and bug fixing
+
+---
+
+## Week 3 Outcome
+
+The project now has a full frontend-backend-database flow.
+
+Projects and tasks created through the React application are stored persistently in MongoDB Atlas. The backend also provides an AI endpoint that analyzes the workspace data and generates productivity insights using Gemini.
+
+Authentication and user-specific accounts are planned for the next development phase.
+
+---
+
+## Project Goal
+
+The long-term goal is to build a practical developer productivity platform that combines project management, task tracking, analytics, persistent data, and AI-powered productivity assistance in a single application.
+
+```
+```
