@@ -6,6 +6,7 @@ function Calendar({
   currentPage,
   onNavigate,
   tasks,
+  userProfile,
 }) {
   const today = new Date();
 
@@ -195,10 +196,10 @@ function Calendar({
 
         {/* Sidebar */}
         <Sidebar
-          currentPage={currentPage}
-          onNavigate={onNavigate}
-        />
-
+  currentPage={currentPage}
+  onNavigate={onNavigate}
+  userProfile={userProfile}
+/>
         {/* Main Content */}
         <main className="min-w-0 flex-1 overflow-y-auto">
 

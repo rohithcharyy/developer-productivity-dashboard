@@ -1,6 +1,7 @@
 function Sidebar({
   currentPage,
   onNavigate,
+  userProfile,
 }) {
   const menuItems = [
     { name: "Dashboard", icon: "D", page: "dashboard" },
@@ -8,6 +9,7 @@ function Sidebar({
     { name: "Tasks", icon: "✔️", page: "tasks" },
     { name: "Calendar", icon: "📅", page: "calendar" },
     { name: "Analytics", icon: "📊", page: "analytics" },
+    { name: "AI Assistant", icon: "🤖", page: "ai-assistant" },
   ];
 
   return (
@@ -85,18 +87,20 @@ function Sidebar({
 
           <div className="flex items-center gap-3">
 
+            {/* Avatar */}
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-500 text-sm font-semibold text-white">
-              R
+              {(userProfile?.name || "R").charAt(0).toUpperCase()}
             </div>
 
+            {/* User Details */}
             <div className="min-w-0">
 
               <p className="truncate text-sm font-semibold text-slate-800">
-                Rohith
+                {userProfile?.name || "Rohith"}
               </p>
 
               <p className="truncate text-xs text-slate-500">
-                Developer
+                {userProfile?.role || "Developer"}
               </p>
 
             </div>

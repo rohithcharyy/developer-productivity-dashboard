@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "../components/layout/Navbar";
 import Sidebar from "../components/layout/Sidebar";
-import { createTask } from "../api/api";
 
+import {
+  getTasks,
+  createTask,
+  updateTaskStatus,
+  deleteTask,
+} from "../api/api";
 function Tasks({
   currentPage,
   onNavigate,
@@ -10,9 +15,13 @@ function Tasks({
   setTaskList,
   projects,
   setProjectList,
+  userProfile,
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -22,55 +31,32 @@ function Tasks({
     dueDate: "",
   });
 
-  // -----------------------------
-  // Open New Task Modal
-  // -----------------------------
-  const handleNewTask = () => {
-    setEditingTask(null);
+  // --------------------------------
+  // Load Tasks from MongoDB
+  // --------------------------------
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
 
-    setFormData({
-      title: "",
-      project: projects.length > 0 ? projects[0].name : "",
-      status: "Todo",
-      priority: "Medium",
-      dueDate: "",
-    });
+        const response = await getTasks();
 
-    setIsModalOpen(true);
-  };
+        setTaskList(response.data);
+      } catch (error) {
+        console.error("Failed to load tasks:", error);
+        setError("Failed to load tasks.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // -----------------------------
-  // Open Edit Task Modal
-  // -----------------------------
-  const handleEditTask = (task) => {
-    setEditingTask(task);
+    loadTasks();
+  }, [setTaskList]);
 
-    setFormData({
-      title: task.title,
-      project: task.project,
-      status: task.status,
-      priority: task.priority,
-      dueDate: task.dueDate || "",
-    });
-
-    setIsModalOpen(true);
-  };
-
-  // -----------------------------
-  // Handle Form Changes
-  // -----------------------------
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-
-    setFormData((previous) => ({
-      ...previous,
-      [name]: value,
-    }));
-  };
-
-  // -----------------------------
+  // --------------------------------
   // Update Project Statistics
-  // -----------------------------
+  // --------------------------------
   const updateProjectStats = (taskList) => {
     setProjectList((previousProjects) =>
       previousProjects.map((project) => {
@@ -99,9 +85,58 @@ function Tasks({
     );
   };
 
-  // -----------------------------
+  // --------------------------------
+  // Open New Task Modal
+  // --------------------------------
+  const handleNewTask = () => {
+    setEditingTask(null);
+
+    setFormData({
+      title: "",
+      project:
+        projects.length > 0
+          ? projects[0].name
+          : "",
+      status: "Todo",
+      priority: "Medium",
+      dueDate: "",
+    });
+
+    setIsModalOpen(true);
+  };
+
+  // --------------------------------
+  // Open Edit Task Modal
+  // --------------------------------
+  const handleEditTask = (task) => {
+    setEditingTask(task);
+
+    setFormData({
+      title: task.title,
+      project: task.project,
+      status: task.status,
+      priority: task.priority,
+      dueDate: task.dueDate || "",
+    });
+
+    setIsModalOpen(true);
+  };
+
+  // --------------------------------
+  // Handle Form Changes
+  // --------------------------------
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  };
+
+  // --------------------------------
   // Save Task
-  // -----------------------------
+  // --------------------------------
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -109,75 +144,58 @@ function Tasks({
       return;
     }
 
-    // -----------------------------
-    // Edit Existing Task
-    // -----------------------------
-    if (editingTask) {
-      const updatedTasks = tasks.map((task) =>
-        task.id === editingTask.id
-          ? {
-              ...task,
-              title: formData.title,
-              project: formData.project,
-              status: formData.status,
-              priority: formData.priority,
-              dueDate: formData.dueDate,
-              completedAt:
-                formData.status === "Done"
-                  ? task.completedAt ||
-                    new Date().toISOString().split("T")[0]
-                  : null,
-            }
-          : task
-      );
-
-      setTaskList(updatedTasks);
-      updateProjectStats(updatedTasks);
-      setIsModalOpen(false);
-
-      return;
-    }
-
-    // -----------------------------
-    // Create New Task
-    // -----------------------------
     try {
-      const selectedProject = projects.find(
-        (project) => project.name === formData.project
-      );
+      setError(null);
 
-      if (!selectedProject) {
-        alert("Please select a valid project.");
+      // --------------------------------
+      // Edit Existing Task
+      // --------------------------------
+      if (editingTask) {
+        const response = await updateTaskStatus(
+          editingTask._id,
+          formData.status
+        );
+
+        const updatedTask = {
+          ...editingTask,
+          ...response.data,
+          title: formData.title,
+          project: formData.project,
+          priority: formData.priority,
+          dueDate: formData.dueDate,
+        };
+
+        const updatedTasks = tasks.map((task) =>
+          task._id === editingTask._id
+            ? updatedTask
+            : task
+        );
+
+        setTaskList(updatedTasks);
+        updateProjectStats(updatedTasks);
+
+        setIsModalOpen(false);
+        setEditingTask(null);
+
         return;
       }
 
+      // --------------------------------
+      // Create New Task
+      // --------------------------------
       const newTaskData = {
         title: formData.title,
-        projectId: selectedProject.id,
-        status:
-          formData.status === "Done"
-            ? "Completed"
-            : formData.status,
+        project: formData.project,
+        status: formData.status,
         priority: formData.priority,
         dueDate: formData.dueDate,
       };
 
-      const createdTask = await createTask(newTaskData);
-
-      // Convert backend response to the format
-      // currently used by the React UI
-      const taskForUI = {
-        ...createdTask,
-        project: selectedProject.name,
-        status:
-          createdTask.status === "Completed"
-            ? "Done"
-            : createdTask.status,
-      };
+      const response = await createTask(newTaskData);
 
       const updatedTasks = [
         ...tasks,
-        taskForUI,
+        response.data,
       ];
 
       setTaskList(updatedTasks);
@@ -185,49 +203,122 @@ function Tasks({
 
       setIsModalOpen(false);
     } catch (error) {
-      console.error("Failed to create task:", error);
+      console.error("Task operation failed:", error);
 
-      alert(
-        "Failed to create task. Make sure the backend is running."
+      setError(
+        "Failed to save task. Make sure the backend is running."
       );
     }
   };
 
-  // -----------------------------
+  // --------------------------------
   // Delete Task
-  // -----------------------------
-  const handleDeleteTask = (taskId) => {
+  // --------------------------------
+  const handleDeleteTask = async (taskId) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this task?"
     );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
-    const updatedTasks = tasks.filter(
-      (task) => task.id !== taskId
-    );
+    try {
+      setError(null);
 
-    setTaskList(updatedTasks);
-    updateProjectStats(updatedTasks);
+      await deleteTask(taskId);
+
+      const updatedTasks = tasks.filter(
+        (task) => task._id !== taskId
+      );
+
+      setTaskList(updatedTasks);
+      updateProjectStats(updatedTasks);
+    } catch (error) {
+      console.error("Failed to delete task:", error);
+
+      setError("Failed to delete task.");
+    }
   };
 
-  // -----------------------------
+  // --------------------------------
   // Status Styles
-  // -----------------------------
+  // --------------------------------
   const statusStyles = {
     Todo: "bg-slate-100 text-slate-600",
     "In Progress": "bg-blue-50 text-blue-600",
     Done: "bg-green-50 text-green-600",
   };
 
-  // -----------------------------
+  // --------------------------------
   // Priority Styles
-  // -----------------------------
+  // --------------------------------
   const priorityStyles = {
     High: "bg-red-50 text-red-600",
     Medium: "bg-yellow-50 text-yellow-600",
     Low: "bg-green-50 text-green-600",
   };
+
+  // --------------------------------
+  // Loading State
+  // --------------------------------
+  if (isLoading) {
+    return (
+      <div className="h-screen overflow-hidden bg-slate-50">
+        <Navbar />
+
+        <div className="flex h-[calc(100vh-4rem)]">
+          <Sidebar
+            currentPage={currentPage}
+            onNavigate={onNavigate}
+            userProfile={userProfile}
+          />
+
+          <main className="min-w-0 flex-1 overflow-y-auto">
+            <div className="flex h-full items-center justify-center">
+              <p className="text-sm text-slate-500">
+                Loading tasks...
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // --------------------------------
+  // Error State
+  // --------------------------------
+  if (error && tasks.length === 0) {
+    return (
+      <div className="h-screen overflow-hidden bg-slate-50">
+        <Navbar />
+
+        <div className="flex h-[calc(100vh-4rem)]">
+          <Sidebar
+            currentPage={currentPage}
+            onNavigate={onNavigate}
+            userProfile={userProfile}
+          />
+
+          <main className="min-w-0 flex-1 overflow-y-auto">
+            <div className="flex h-full flex-col items-center justify-center gap-4">
+              <p className="text-sm text-red-500">
+                {error}
+              </p>
+
+              <button
+                onClick={() => window.location.reload()}
+                className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+              >
+                Retry
+              </button>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen overflow-hidden bg-slate-50">
@@ -241,6 +332,7 @@ function Tasks({
         <Sidebar
           currentPage={currentPage}
           onNavigate={onNavigate}
+          userProfile={userProfile}
         />
 
         {/* Main Content */}
@@ -267,7 +359,6 @@ function Tasks({
                   </p>
                 </div>
 
-                {/* New Task */}
                 <button
                   onClick={handleNewTask}
                   className="w-full rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-600 sm:w-auto"
@@ -278,11 +369,20 @@ function Tasks({
               </div>
             </section>
 
+            {/* Error Message */}
+            {error && (
+              <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
             {/* Task Count */}
             <div className="mb-5">
               <p className="text-sm text-slate-500">
                 {tasks.length}{" "}
-                {tasks.length === 1 ? "task" : "tasks"}{" "}
+                {tasks.length === 1
+                  ? "task"
+                  : "tasks"}{" "}
                 in your workspace
               </p>
             </div>
@@ -295,7 +395,7 @@ function Tasks({
                 {tasks.map((task) => (
 
                   <div
-                    key={task.id}
+                    key={task._id}
                     className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
                   >
 
@@ -376,7 +476,7 @@ function Tasks({
 
                       <button
                         onClick={() =>
-                          handleDeleteTask(task.id)
+                          handleDeleteTask(task._id)
                         }
                         className="text-xs font-medium text-red-500 transition hover:text-red-700"
                       >
@@ -426,7 +526,7 @@ function Tasks({
       {/* Add / Edit Task Modal */}
       {isModalOpen && (
 
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black-500/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
 
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
 
@@ -448,9 +548,7 @@ function Tasks({
               </div>
 
               <button
-                onClick={() =>
-                  setIsModalOpen(false)
-                }
+                onClick={() => setIsModalOpen(false)}
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
               >
                 ×
@@ -466,7 +564,6 @@ function Tasks({
 
               {/* Title */}
               <div>
-
                 <label className="text-sm font-medium text-slate-700">
                   Task Title
                 </label>
@@ -480,12 +577,10 @@ function Tasks({
                   className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
                   required
                 />
-
               </div>
 
               {/* Project */}
               <div>
-
                 <label className="text-sm font-medium text-slate-700">
                   Project
                 </label>
@@ -497,23 +592,19 @@ function Tasks({
                   className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none"
                   required
                 >
-
                   {projects.map((project) => (
                     <option
-                      key={project.id}
+                      key={project._id}
                       value={project.name}
                     >
                       {project.name}
                     </option>
                   ))}
-
                 </select>
-
               </div>
 
               {/* Status */}
               <div>
-
                 <label className="text-sm font-medium text-slate-700">
                   Status
                 </label>
@@ -524,7 +615,6 @@ function Tasks({
                   onChange={handleChange}
                   className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none"
                 >
-
                   <option value="Todo">
                     Todo
                   </option>
@@ -536,14 +626,11 @@ function Tasks({
                   <option value="Done">
                     Done
                   </option>
-
                 </select>
-
               </div>
 
               {/* Priority */}
               <div>
-
                 <label className="text-sm font-medium text-slate-700">
                   Priority
                 </label>
@@ -554,7 +641,6 @@ function Tasks({
                   onChange={handleChange}
                   className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none"
                 >
-
                   <option value="High">
                     High
                   </option>
@@ -566,14 +652,11 @@ function Tasks({
                   <option value="Low">
                     Low
                   </option>
-
                 </select>
-
               </div>
 
               {/* Due Date */}
               <div>
-
                 <label className="text-sm font-medium text-slate-700">
                   Due Date
                 </label>
@@ -585,7 +668,6 @@ function Tasks({
                   onChange={handleChange}
                   className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none"
                 />
-
               </div>
 
               {/* Buttons */}
@@ -593,9 +675,7 @@ function Tasks({
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setIsModalOpen(false)
-                  }
+                  onClick={() => setIsModalOpen(false)}
                   className="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
                 >
                   Cancel

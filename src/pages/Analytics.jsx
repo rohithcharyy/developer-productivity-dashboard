@@ -13,21 +13,18 @@ import Sidebar from "../components/layout/Sidebar";
 import StreakCard from "../components/Analytics/StreakCard";
 import TaskStatusChart from "../components/Analytics/TaskStatusChart";
 import PriorityChart from "../components/Analytics/PriorityChart";
-import AIInsights from "../components/Analytics/AIInsights";
 
 function Analytics({
-  tasks,
-  projects,
   currentPage,
   onNavigate,
+  tasks,
+  projects,
+  userProfile,
 }) {
-
   // --------------------------------------------------
   // COMPLETED TASKS
   // --------------------------------------------------
 
-  // Treat "Done" as completed.
-  // This also supports "Completed" in case your data uses that.
   const completedTasks = tasks.filter(
     (task) =>
       task.status === "Done" ||
@@ -42,32 +39,47 @@ function Analytics({
 
   const completionRate =
     tasks.length > 0
-      ? Math.round((totalCompleted / tasks.length) * 100)
+      ? Math.round(
+          (totalCompleted / tasks.length) * 100
+        )
       : 0;
 
   // --------------------------------------------------
-  // GET COMPLETION DATE
+  // DATE HELPERS
   // --------------------------------------------------
 
-  /*
-    New tasks should ideally have completedAt.
+  const formatDate = (date) => {
+    const year = date.getFullYear();
 
-    For older/demo tasks:
-    if a task is Done but doesn't have completedAt,
-    use dueDate as a fallback so existing data still
-    appears correctly in Analytics.
-  */
+    const month = String(
+      date.getMonth() + 1
+    ).padStart(2, "0");
+
+    const day = String(
+      date.getDate()
+    ).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
+  // --------------------------------------------------
+  // GET TASK COMPLETION DATE
+  // --------------------------------------------------
 
   const getCompletionDate = (task) => {
     if (task.completedAt) {
-      return task.completedAt;
+      return String(task.completedAt).slice(0, 10);
     }
 
+    // Older tasks may not have completedAt.
+    // Use dueDate only as a fallback.
     if (
       task.status === "Done" ||
       task.status === "Completed"
     ) {
-      return task.dueDate || null;
+      return task.dueDate
+        ? String(task.dueDate).slice(0, 10)
+        : null;
     }
 
     return null;
@@ -86,16 +98,7 @@ function Analytics({
       date.setHours(0, 0, 0, 0);
       date.setDate(date.getDate() - i);
 
-      const year = date.getFullYear();
-      const month = String(
-        date.getMonth() + 1
-      ).padStart(2, "0");
-      const day = String(
-        date.getDate()
-      ).padStart(2, "0");
-
-      const formattedDate =
-        `${year}-${month}-${day}`;
+      const formattedDate = formatDate(date);
 
       const dayName = date.toLocaleDateString(
         "en-US",
@@ -113,6 +116,7 @@ function Analytics({
         }).length;
 
       days.push({
+        date: formattedDate,
         day: dayName,
         completed: completedCount,
       });
@@ -148,7 +152,6 @@ function Analytics({
       return 0;
     }
 
-    // Convert dates to local midnight
     const dates = completionDates
       .map((dateString) => {
         const date = new Date(
@@ -158,7 +161,8 @@ function Analytics({
         return date;
       })
       .sort(
-        (a, b) => b.getTime() - a.getTime()
+        (a, b) =>
+          b.getTime() - a.getTime()
       );
 
     const today = new Date();
@@ -168,23 +172,29 @@ function Analytics({
     const latestDate = dates[0];
 
     const daysSinceLatest = Math.floor(
-      (today.getTime() -
-        latestDate.getTime()) /
+      (
+        today.getTime() -
+        latestDate.getTime()
+      ) /
         (1000 * 60 * 60 * 24)
     );
 
-    // If the most recent completion is older
-    // than yesterday, the current streak is 0.
     if (daysSinceLatest > 1) {
       return 0;
     }
 
     let streak = 1;
 
-    for (let i = 1; i < dates.length; i++) {
+    for (
+      let i = 1;
+      i < dates.length;
+      i++
+    ) {
       const difference = Math.floor(
-        (dates[i - 1].getTime() -
-          dates[i].getTime()) /
+        (
+          dates[i - 1].getTime() -
+          dates[i].getTime()
+        ) /
           (1000 * 60 * 60 * 24)
       );
 
@@ -202,6 +212,44 @@ function Analytics({
     calculateStreak();
 
   // --------------------------------------------------
+  // WORKSPACE SUMMARY
+  // --------------------------------------------------
+
+  const activeTasks = tasks.filter(
+    (task) =>
+      task.status !== "Done" &&
+      task.status !== "Completed"
+  );
+
+  const highPriorityTasks =
+    activeTasks.filter(
+      (task) => task.priority === "High"
+    );
+
+  // --------------------------------------------------
+  // OVERDUE TASKS
+  // --------------------------------------------------
+
+  const today = formatDate(new Date());
+
+  const overdueTasks = activeTasks.filter(
+    (task) =>
+      task.dueDate &&
+      String(task.dueDate).slice(0, 10) <
+        today
+  );
+
+  // --------------------------------------------------
+  // PROJECT PROGRESS
+  // --------------------------------------------------
+
+  const projectsInProgress =
+    projects.filter(
+      (project) =>
+        project.status === "In Progress"
+    );
+
+  // --------------------------------------------------
   // RENDER
   // --------------------------------------------------
 
@@ -211,16 +259,16 @@ function Analytics({
       {/* Navbar */}
       <Navbar />
 
-      {/* Workspace */}
       <div className="flex h-[calc(100vh-4rem)]">
 
         {/* Sidebar */}
         <Sidebar
-          currentPage={currentPage}
-          onNavigate={onNavigate}
-        />
+  currentPage={currentPage}
+  onNavigate={onNavigate}
+  userProfile={userProfile}
+/>
 
-        {/* Main Analytics Area */}
+        {/* Main Content */}
         <main className="min-w-0 flex-1 overflow-y-auto">
 
           <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
@@ -237,7 +285,8 @@ function Analytics({
               </h1>
 
               <p className="mt-2 text-sm text-slate-500 sm:text-base">
-                Understand your work patterns and track your productivity.
+                Understand your work patterns, workload,
+                deadlines, and productivity.
               </p>
 
             </section>
@@ -291,7 +340,7 @@ function Analytics({
                 </p>
 
                 <p className="mt-2 text-sm text-slate-500">
-                  Tasks completed in the last 7 days
+                  Last 7 days
                 </p>
 
               </div>
@@ -300,6 +349,79 @@ function Analytics({
               <StreakCard
                 streak={currentStreak}
               />
+
+            </section>
+
+            {/* Productivity Signals */}
+            <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+              {/* Active Tasks */}
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+
+                <p className="text-sm font-medium text-slate-500">
+                  Active Tasks
+                </p>
+
+                <p className="mt-2 text-2xl font-bold text-slate-900">
+                  {activeTasks.length}
+                </p>
+
+                <p className="mt-2 text-xs text-slate-500">
+                  Tasks still requiring work
+                </p>
+
+              </div>
+
+              {/* High Priority */}
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+
+                <p className="text-sm font-medium text-slate-500">
+                  High Priority
+                </p>
+
+                <p className="mt-2 text-2xl font-bold text-slate-900">
+                  {highPriorityTasks.length}
+                </p>
+
+                <p className="mt-2 text-xs text-slate-500">
+                  High-priority active tasks
+                </p>
+
+              </div>
+
+              {/* Overdue */}
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+
+                <p className="text-sm font-medium text-slate-500">
+                  Overdue
+                </p>
+
+                <p className="mt-2 text-2xl font-bold text-slate-900">
+                  {overdueTasks.length}
+                </p>
+
+                <p className="mt-2 text-xs text-slate-500">
+                  Tasks past their deadline
+                </p>
+
+              </div>
+
+              {/* Active Projects */}
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+
+                <p className="text-sm font-medium text-slate-500">
+                  Active Projects
+                </p>
+
+                <p className="mt-2 text-2xl font-bold text-slate-900">
+                  {projectsInProgress.length}
+                </p>
+
+                <p className="mt-2 text-xs text-slate-500">
+                  Projects currently in progress
+                </p>
+
+              </div>
 
             </section>
 
@@ -313,7 +435,7 @@ function Analytics({
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Number of tasks completed over the last 7 days.
+                  Tasks completed over the last 7 days.
                 </p>
 
               </div>
@@ -325,7 +447,9 @@ function Analytics({
                   height="100%"
                 >
 
-                  <BarChart data={weeklyData}>
+                  <BarChart
+                    data={weeklyData}
+                  >
 
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -345,7 +469,12 @@ function Analytics({
                     <Bar
                       dataKey="completed"
                       fill="#2563eb"
-                      radius={[6, 6, 0, 0]}
+                      radius={[
+                        6,
+                        6,
+                        0,
+                        0,
+                      ]}
                     />
 
                   </BarChart>
@@ -359,24 +488,17 @@ function Analytics({
             {/* Analytics Charts */}
             <section className="mt-8 grid gap-6 lg:grid-cols-2">
 
-              {/* Task Status */}
               <TaskStatusChart
                 tasks={tasks}
               />
 
-              {/* Priority */}
               <PriorityChart
                 tasks={tasks}
               />
 
             </section>
 
-            {/* AI Insights */}
-            <AIInsights
-              tasks={tasks}
-              projects={projects}
-              streak={currentStreak}
-            />
+          
 
             <div className="h-8" />
 

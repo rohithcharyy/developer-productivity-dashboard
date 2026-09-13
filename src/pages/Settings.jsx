@@ -1,14 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "../components/layout/Navbar";
 import Sidebar from "../components/layout/Sidebar";
 
 function Settings({
   currentPage,
   onNavigate,
+  userProfile,
+  setUserProfile,
 }) {
   // Profile
-  const [name, setName] = useState("Rohith");
-  const [role, setRole] = useState("Developer");
+  const [name, setName] = useState(userProfile?.name || "Rohith");
+  const [role, setRole] = useState(
+    userProfile?.role || "Developer"
+  );
 
   // Notifications
   const [taskReminders, setTaskReminders] = useState(true);
@@ -25,14 +29,33 @@ function Settings({
 
   const [saved, setSaved] = useState(false);
 
-  const handleSave = () => {
-    setSaved(true);
+  // Keep form fields synchronized with shared profile
+  useEffect(() => {
+    if (userProfile) {
+      setName(userProfile.name || "Rohith");
+      setRole(userProfile.role || "Developer");
+    }
+  }, [userProfile]);
 
-    setTimeout(() => {
-      setSaved(false);
-    }, 2000);
+  // Save settings
+ const handleSave = () => {
+  const updatedProfile = {
+    name: name.trim() || "Rohith",
+    role: role.trim() || "Developer",
   };
 
+  console.log("Saving profile:", updatedProfile);
+
+  setUserProfile(updatedProfile);
+
+  setSaved(true);
+
+  setTimeout(() => {
+    setSaved(false);
+  }, 2000);
+};
+
+  // Reset settings
   const handleReset = () => {
     setName("Rohith");
     setRole("Developer");
@@ -56,9 +79,10 @@ function Settings({
 
         {/* Sidebar */}
         <Sidebar
-          currentPage={currentPage}
-          onNavigate={onNavigate}
-        />
+  currentPage={currentPage}
+  onNavigate={onNavigate}
+  userProfile={userProfile}
+/>
 
         {/* Main Content */}
         <main className="min-w-0 flex-1 overflow-y-auto">
@@ -83,8 +107,7 @@ function Settings({
 
             <div className="space-y-6">
 
-              {/* ================= PROFILE ================= */}
-
+              {/* PROFILE */}
               <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
 
                 <div className="border-b border-slate-200 p-5 sm:p-6">
@@ -134,8 +157,7 @@ function Settings({
                 </div>
               </section>
 
-              {/* ================= NOTIFICATIONS ================= */}
-
+              {/* NOTIFICATIONS */}
               <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
 
                 <div className="border-b border-slate-200 p-5 sm:p-6">
@@ -174,8 +196,7 @@ function Settings({
                 </div>
               </section>
 
-              {/* ================= APPEARANCE ================= */}
-
+              {/* APPEARANCE */}
               <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
 
                 <div className="border-b border-slate-200 p-5 sm:p-6">
@@ -200,8 +221,7 @@ function Settings({
                 </div>
               </section>
 
-              {/* ================= PRODUCTIVITY ================= */}
-
+              {/* PRODUCTIVITY */}
               <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
 
                 <div className="border-b border-slate-200 p-5 sm:p-6">
@@ -260,11 +280,11 @@ function Settings({
                 </div>
               </section>
 
-              {/* ================= AI ================= */}
-
+              {/* AI */}
               <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
 
                 <div className="border-b border-slate-200 p-5 sm:p-6">
+
                   <div className="flex items-center gap-2">
 
                     <h2 className="text-lg font-semibold text-slate-900">
@@ -272,15 +292,16 @@ function Settings({
                     </h2>
 
                     <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
-                      Coming soon
+                      Available
                     </span>
 
                   </div>
 
                   <p className="mt-1 text-sm text-slate-500">
                     AI-powered productivity analysis and
-                    recommendations will appear here.
+                    recommendations.
                   </p>
+
                 </div>
 
                 <div className="p-5 sm:p-6">
@@ -292,7 +313,7 @@ function Settings({
                     </p>
 
                     <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Your AI assistant will analyze your tasks,
+                      Your AI assistant analyzes your tasks,
                       projects and productivity patterns to provide
                       useful recommendations.
                     </p>
@@ -302,8 +323,7 @@ function Settings({
                 </div>
               </section>
 
-              {/* ================= ACTIONS ================= */}
-
+              {/* ACTIONS */}
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
 
                 <button
@@ -322,8 +342,7 @@ function Settings({
 
               </div>
 
-              {/* ================= DANGER ZONE ================= */}
-
+              {/* DANGER ZONE */}
               <section className="rounded-xl border border-red-200 bg-white shadow-sm">
 
                 <div className="p-5 sm:p-6">
@@ -355,6 +374,7 @@ function Settings({
 
             </div>
           </div>
+
         </main>
       </div>
     </div>
@@ -362,7 +382,7 @@ function Settings({
 }
 
 /* =========================================
-   REUSABLE TOGGLE COMPONENT
+   REUSABLE TOGGLE
 ========================================= */
 
 function SettingToggle({

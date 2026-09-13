@@ -16,18 +16,18 @@ function Dashboard({
   onNavigate,
   taskList,
   projectList,
+  userProfile,
 }) {
-  // Search and filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("All");
   const [projectFilter, setProjectFilter] = useState("All");
 
-  // UI states
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Simulate loading
+  const [currentTime, setCurrentTime] = useState(new Date());
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
@@ -36,7 +36,34 @@ function Dashboard({
     return () => clearTimeout(timer);
   }, []);
 
-  // Statistics
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const hour = currentTime.getHours();
+
+  let greeting;
+
+  if (hour < 12) {
+    greeting = "Good morning";
+  } else if (hour < 17) {
+    greeting = "Good afternoon";
+  } else if (hour < 21) {
+    greeting = "Good evening";
+  } else {
+    greeting = "Good night";
+  }
+
+  const formattedDate = currentTime.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
   const totalProjects = projectList.length;
   const totalTasks = taskList.length;
 
@@ -48,39 +75,27 @@ function Dashboard({
     (task) => task.status === "In Progress"
   ).length;
 
-  // Retry handler
   const handleRetry = () => {
     setError(null);
   };
 
-  // Filter projects
   const filteredProjects = projectList.filter((project) =>
-    project.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
+    project.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Filter tasks
   const filteredTasks = taskList.filter((task) => {
     const matchesSearch =
-      task.title
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      task.project
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.project.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus =
-      statusFilter === "All" ||
-      task.status === statusFilter;
+      statusFilter === "All" || task.status === statusFilter;
 
     const matchesPriority =
-      priorityFilter === "All" ||
-      task.priority === priorityFilter;
+      priorityFilter === "All" || task.priority === priorityFilter;
 
     const matchesProject =
-      projectFilter === "All" ||
-      task.project === projectFilter;
+      projectFilter === "All" || task.project === projectFilter;
 
     return (
       matchesSearch &&
@@ -90,7 +105,6 @@ function Dashboard({
     );
   });
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="h-screen overflow-hidden bg-slate-50">
@@ -100,10 +114,11 @@ function Dashboard({
         />
 
         <div className="flex h-[calc(100vh-4rem)]">
-          <Sidebar
-            currentPage={currentPage}
-            onNavigate={onNavigate}
-          />
+         <Sidebar
+  currentPage={currentPage}
+  onNavigate={onNavigate}
+  userProfile={userProfile}
+/>
 
           <main className="min-w-0 flex-1 overflow-y-auto">
             <LoadingState message="Loading your workspace..." />
@@ -113,20 +128,17 @@ function Dashboard({
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="h-screen overflow-hidden bg-slate-50">
-        <Navbar
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-        />
+        <Navbar />
 
         <div className="flex h-[calc(100vh-4rem)]">
           <Sidebar
-            currentPage={currentPage}
-            onNavigate={onNavigate}
-          />
+  currentPage={currentPage}
+  onNavigate={onNavigate}
+  userProfile={userProfile}
+/>
 
           <main className="min-w-0 flex-1 overflow-y-auto">
             <div className="p-4 sm:p-6 lg:p-8">
@@ -144,34 +156,32 @@ function Dashboard({
   return (
     <div className="h-screen overflow-hidden bg-slate-50">
 
-      {/* Navbar */}
       <Navbar
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
       />
 
-      {/* Workspace */}
       <div className="flex h-[calc(100vh-4rem)]">
 
-        {/* Fixed Sidebar */}
         <Sidebar
           currentPage={currentPage}
           onNavigate={onNavigate}
+          userProfile={userProfile}
         />
 
-        {/* Scrollable Content */}
         <main className="min-w-0 flex-1 overflow-y-auto">
+
           <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
 
-            {/* Welcome Section */}
+            {/* Welcome */}
             <section className="mb-8">
               <p className="text-sm font-medium text-blue-600">
-                Friday, August 22
+                {formattedDate}
               </p>
 
               <div className="mt-2">
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                  Good morning, Rohith 👋
+                  {greeting}, {userProfile?.name || "Rohith"} 👋
                 </h1>
 
                 <p className="mt-2 text-sm text-slate-500 sm:text-base">
@@ -230,7 +240,6 @@ function Dashboard({
 
               {filteredProjects.length > 0 ? (
                 <div className="grid gap-5 lg:grid-cols-2">
-
                   {filteredProjects.map((project) => (
                     <ProjectCard
                       key={project.id}
@@ -241,7 +250,6 @@ function Dashboard({
                       totalTasks={project.totalTasks}
                     />
                   ))}
-
                 </div>
               ) : (
                 <EmptyState
@@ -266,7 +274,6 @@ function Dashboard({
                 </p>
               </div>
 
-              {/* Filters */}
               <TaskFilters
                 statusFilter={statusFilter}
                 setStatusFilter={setStatusFilter}
@@ -277,7 +284,6 @@ function Dashboard({
                 projects={projectList}
               />
 
-              {/* Task List */}
               {filteredTasks.length > 0 ? (
                 <div className="grid gap-5 pb-8 lg:grid-cols-2">
 
@@ -304,6 +310,7 @@ function Dashboard({
             </section>
 
           </div>
+
         </main>
       </div>
     </div>

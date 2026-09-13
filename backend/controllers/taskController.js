@@ -1,123 +1,233 @@
-let tasks = [
-    {
-        id: 1,
-        title: "Create User API",
-        description: "Build and test user endpoints",
-        status: "Completed",
-        priority: "High",
-        projectId: 1
-    },
-    {
-        id: 2,
-        title: "Create Projects API",
-        description: "Build project creation and retrieval endpoints",
-        status: "In Progress",
-        priority: "High",
-        projectId: 1
-    }
-];
+import Task from "../models/Task.js";
+import Project from "../models/Project.js";
 
-// GET /api/tasks
-const getTasks = (req, res) => {
-    res.status(200).json({
-        success: true,
-        count: tasks.length,
-        data: tasks
-    });
+// ---------------------------------------
+// Update project statistics
+// ---------------------------------------
+const updateProjectStats = async (projectName) => {
+  if (!projectName) {
+    return;
+  }
+
+  const projectTasks = await Task.find({
+    project: projectName,
+  }).lean();
+
+  const totalTasks = projectTasks.length;
+
+  const tasksCompleted = projectTasks.filter(
+    (task) => task.status === "Done"
+  ).length;
+
+  const progress =
+    totalTasks > 0
+      ? Math.round((tasksCompleted / totalTasks) * 100)
+      : 0;
+
+  await Project.findOneAndUpdate(
+    { name: projectName },
+    {
+      totalTasks,
+      tasksCompleted,
+      progress,
+    }
+  );
 };
 
-// GET /api/tasks/:id
-const getTaskById = (req, res) => {
-    const id = Number(req.params.id);
 
-    const task = tasks.find(task => task.id === id);
+// ---------------------------------------
+// GET /api/tasks
+// ---------------------------------------
+const getTasks = async (req, res) => {
+  try {
+    const tasks = await Task.find();
+
+    res.status(200).json({
+      success: true,
+      count: tasks.length,
+      data: tasks,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch tasks",
+      error: error.message,
+    });
+  }
+};
+
+
+// ---------------------------------------
+// GET /api/tasks/:id
+// ---------------------------------------
+const getTaskById = async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
 
     if (!task) {
-        return res.status(404).json({
-            success: false,
-            message: "Task not found"
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Task not found",
+      });
     }
 
     res.status(200).json({
-        success: true,
-        data: task
+      success: true,
+      data: task,
     });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch task",
+      error: error.message,
+    });
+  }
 };
 
+
+// ---------------------------------------
 // POST /api/tasks
-const createTask = (req, res) => {
+// ---------------------------------------
+const createTask = async (req, res) => {
+  try {
     const {
-        title,
-        description,
-        priority,
-        projectId
+      title,
+      project,
+      status,
+      priority,
+      dueDate,
     } = req.body;
 
-    if (!title || !projectId) {
-        return res.status(400).json({
-            success: false,
-            message: "Title and projectId are required"
-        });
+    if (!title || !project) {
+      return res.status(400).json({
+        success: false,
+        message: "Title and project are required",
+      });
     }
 
-    const newTask = {
-        id: tasks.length + 1,
-        title,
-        description: description || "",
-        status: "Pending",
-        priority: priority || "Medium",
-        projectId: Number(projectId)
-    };
+    const task = await Task.create({
+      title,
+      project,
+      status,
+      priority,
+      dueDate,
+    });
 
-    tasks.push(newTask);
+    // Update project statistics
+    await updateProjectStats(project);
 
     res.status(201).json({
-        success: true,
-        message: "Task created successfully",
-        data: newTask
+      success: true,
+      message: "Task created successfully",
+      data: task,
     });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to create task",
+      error: error.message,
+    });
+  }
 };
 
+
+// ---------------------------------------
 // PATCH /api/tasks/:id/status
-const updateTaskStatus = (req, res) => {
-    const id = Number(req.params.id);
+// ---------------------------------------
+const updateTaskStatus = async (req, res) => {
+  try {
     const { status } = req.body;
 
     const allowedStatuses = [
-        "Pending",
-        "In Progress",
-        "Completed"
+      "Todo",
+      "In Progress",
+      "Done",
     ];
 
     if (!allowedStatuses.includes(status)) {
-        return res.status(400).json({
-            success: false,
-            message: "Invalid status"
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status",
+      });
     }
 
-    const task = tasks.find(task => task.id === id);
+    const task = await Task.findByIdAndUpdate(
+      req.params.id,
+      {
+        status,
+        completedAt:
+          status === "Done"
+            ? new Date().toISOString().split("T")[0]
+            : null,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     if (!task) {
-        return res.status(404).json({
-            success: false,
-            message: "Task not found"
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Task not found",
+      });
     }
 
-    task.status = status;
+    // Update project statistics
+    await updateProjectStats(task.project);
 
     res.status(200).json({
-        success: true,
-        message: "Task status updated successfully",
-        data: task
+      success: true,
+      message: "Task status updated successfully",
+      data: task,
     });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to update task status",
+      error: error.message,
+    });
+  }
 };
 
+
+// ---------------------------------------
+// DELETE /api/tasks/:id
+// ---------------------------------------
+const deleteTask = async (req, res) => {
+  try {
+    const task = await Task.findByIdAndDelete(
+      req.params.id
+    );
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Task not found",
+      });
+    }
+
+    // Update project statistics after deletion
+    await updateProjectStats(task.project);
+
+    res.status(200).json({
+      success: true,
+      message: "Task deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete task",
+      error: error.message,
+    });
+  }
+};
+
+
 export {
-    getTasks,
-    getTaskById,
-    createTask,
-    updateTaskStatus
+  getTasks,
+  getTaskById,
+  createTask,
+  updateTaskStatus,
+  deleteTask,
 };
