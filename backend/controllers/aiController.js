@@ -121,8 +121,16 @@ const getAIInsights = async (req, res) => {
     // Initialize Gemini
     // ---------------------------------------
     const ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-    });
+  apiKey: process.env.GEMINI_API_KEY,
+});
+
+console.log(
+  "Gemini API key loaded:",
+  Boolean(process.env.GEMINI_API_KEY),
+  "length:",
+  process.env.GEMINI_API_KEY?.length
+);
+
 
     // ---------------------------------------
     // Fetch user's workspace
