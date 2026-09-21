@@ -1,16 +1,18 @@
+import mongoose from "mongoose";
 import Task from "../models/Task.js";
 import Project from "../models/Project.js";
 
 // ---------------------------------------
 // Update project statistics
 // ---------------------------------------
-const updateProjectStats = async (projectName) => {
-  if (!projectName) {
+const updateProjectStats = async (projectName, userId) => {
+  if (!projectName || !userId) {
     return;
   }
 
   const projectTasks = await Task.find({
     project: projectName,
+    user: userId,
   }).lean();
 
   const totalTasks = projectTasks.length;
@@ -25,7 +27,10 @@ const updateProjectStats = async (projectName) => {
       : 0;
 
   await Project.findOneAndUpdate(
-    { name: projectName },
+    {
+      name: projectName,
+      user: userId,
+    },
     {
       totalTasks,
       tasksCompleted,
@@ -34,35 +39,48 @@ const updateProjectStats = async (projectName) => {
   );
 };
 
-
 // ---------------------------------------
 // GET /api/tasks
 // ---------------------------------------
 const getTasks = async (req, res) => {
   try {
-    const tasks = await Task.find();
+    const tasks = await Task.find({
+      user: req.user.id,
+    });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: tasks.length,
       data: tasks,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Fetch tasks error:", error);
+
+    return res.status(500).json({
       success: false,
       message: "Failed to fetch tasks",
-      error: error.message,
     });
   }
 };
-
 
 // ---------------------------------------
 // GET /api/tasks/:id
 // ---------------------------------------
 const getTaskById = async (req, res) => {
   try {
-    const task = await Task.findById(req.params.id);
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid task ID",
+      });
+    }
+
+    const task = await Task.findOne({
+      _id: id,
+      user: req.user.id,
+    });
 
     if (!task) {
       return res.status(404).json({
@@ -71,19 +89,19 @@ const getTaskById = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: task,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Fetch task error:", error);
+
+    return res.status(500).json({
       success: false,
       message: "Failed to fetch task",
-      error: error.message,
     });
   }
 };
-
 
 // ---------------------------------------
 // POST /api/tasks
@@ -98,7 +116,7 @@ const createTask = async (req, res) => {
       dueDate,
     } = req.body;
 
-    if (!title || !project) {
+    if (!title?.trim() || !project?.trim()) {
       return res.status(400).json({
         success: false,
         message: "Title and project are required",
@@ -106,37 +124,48 @@ const createTask = async (req, res) => {
     }
 
     const task = await Task.create({
-      title,
-      project,
+      user: req.user.id,
+      title: title.trim(),
+      project: project.trim(),
       status,
       priority,
       dueDate,
     });
 
-    // Update project statistics
-    await updateProjectStats(project);
+    await updateProjectStats(
+      task.project,
+      req.user.id
+    );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Task created successfully",
       data: task,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Create task error:", error);
+
+    return res.status(500).json({
       success: false,
       message: "Failed to create task",
-      error: error.message,
     });
   }
 };
-
 
 // ---------------------------------------
 // PATCH /api/tasks/:id/status
 // ---------------------------------------
 const updateTaskStatus = async (req, res) => {
   try {
+    const { id } = req.params;
     const { status } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid task ID",
+      });
+    }
 
     const allowedStatuses = [
       "Todo",
@@ -151,8 +180,11 @@ const updateTaskStatus = async (req, res) => {
       });
     }
 
-    const task = await Task.findByIdAndUpdate(
-      req.params.id,
+    const task = await Task.findOneAndUpdate(
+      {
+        _id: id,
+        user: req.user.id,
+      },
       {
         status,
         completedAt:
@@ -173,32 +205,44 @@ const updateTaskStatus = async (req, res) => {
       });
     }
 
-    // Update project statistics
-    await updateProjectStats(task.project);
+    await updateProjectStats(
+      task.project,
+      req.user.id
+    );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Task status updated successfully",
       data: task,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Update task status error:", error);
+
+    return res.status(500).json({
       success: false,
       message: "Failed to update task status",
-      error: error.message,
     });
   }
 };
-
 
 // ---------------------------------------
 // DELETE /api/tasks/:id
 // ---------------------------------------
 const deleteTask = async (req, res) => {
   try {
-    const task = await Task.findByIdAndDelete(
-      req.params.id
-    );
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid task ID",
+      });
+    }
+
+    const task = await Task.findOneAndDelete({
+      _id: id,
+      user: req.user.id,
+    });
 
     if (!task) {
       return res.status(404).json({
@@ -207,22 +251,24 @@ const deleteTask = async (req, res) => {
       });
     }
 
-    // Update project statistics after deletion
-    await updateProjectStats(task.project);
+    await updateProjectStats(
+      task.project,
+      req.user.id
+    );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Task deleted successfully",
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Delete task error:", error);
+
+    return res.status(500).json({
       success: false,
       message: "Failed to delete task",
-      error: error.message,
     });
   }
 };
-
 
 export {
   getTasks,

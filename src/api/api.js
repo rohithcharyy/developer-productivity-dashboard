@@ -1,154 +1,200 @@
 const API_URL = "http://localhost:5000/api";
 
-// --------------------------------
+// Get saved JWT token
+const getToken = () => {
+  return localStorage.getItem("devdash_token");
+};
+
+// Create authorization headers
+const getHeaders = () => {
+  const token = getToken();
+
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+};
+
+// =========================================================
 // PROJECT APIs
-// --------------------------------
+// =========================================================
 
+// Get all projects
 export const getProjects = async () => {
-  const response = await fetch(`${API_URL}/projects`);
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch projects");
-  }
+  const response = await fetch(`${API_URL}/projects`, {
+    headers: getHeaders(),
+  });
 
   const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message || "Failed to fetch projects"
+    );
+  }
 
   return result;
 };
 
-
+// Create project
 export const createProject = async (project) => {
   const response = await fetch(`${API_URL}/projects`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: getHeaders(),
     body: JSON.stringify(project),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to create project");
-  }
-
   const result = await response.json();
+
+  if (!response.ok) {
+    console.error(
+      "Create project backend error:",
+      result
+    );
+
+    throw new Error(
+      result.message ||
+        result.error ||
+        "Failed to create project"
+    );
+  }
 
   return result;
 };
 
-
+// Update project
 export const updateProject = async (id, project) => {
   const response = await fetch(
     `${API_URL}/projects/${id}`,
     {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getHeaders(),
       body: JSON.stringify(project),
     }
   );
 
-  if (!response.ok) {
-    throw new Error("Failed to update project");
-  }
-
   const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ||
+        "Failed to update project"
+    );
+  }
 
   return result;
 };
 
-
+// Delete project
 export const deleteProject = async (id) => {
   const response = await fetch(
     `${API_URL}/projects/${id}`,
     {
       method: "DELETE",
+      headers: getHeaders(),
     }
   );
 
-  if (!response.ok) {
-    throw new Error("Failed to delete project");
-  }
-
   const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ||
+        "Failed to delete project"
+    );
+  }
 
   return result;
 };
 
-
-// --------------------------------
+// =========================================================
 // TASK APIs
-// --------------------------------
+// =========================================================
 
+// Get all tasks
 export const getTasks = async () => {
-  const response = await fetch(`${API_URL}/tasks`);
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch tasks");
-  }
+  const response = await fetch(`${API_URL}/tasks`, {
+    headers: getHeaders(),
+  });
 
   const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message || "Failed to fetch tasks"
+    );
+  }
 
   return result;
 };
 
-
+// Create task
 export const createTask = async (task) => {
   const response = await fetch(`${API_URL}/tasks`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: getHeaders(),
     body: JSON.stringify(task),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to create task");
-  }
-
   const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ||
+        result.error ||
+        "Failed to create task"
+    );
+  }
 
   return result;
 };
 
-
-export const updateTaskStatus = async (id, status) => {
+// Update task status
+export const updateTaskStatus = async (
+  id,
+  status
+) => {
   const response = await fetch(
     `${API_URL}/tasks/${id}/status`,
     {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getHeaders(),
       body: JSON.stringify({
         status,
       }),
     }
   );
 
-  if (!response.ok) {
-    throw new Error("Failed to update task status");
-  }
-
   const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ||
+        "Failed to update task status"
+    );
+  }
 
   return result;
 };
 
-
+// Delete task
 export const deleteTask = async (id) => {
   const response = await fetch(
     `${API_URL}/tasks/${id}`,
     {
       method: "DELETE",
+      headers: getHeaders(),
     }
   );
 
-  if (!response.ok) {
-    throw new Error("Failed to delete task");
-  }
-
   const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ||
+        "Failed to delete task"
+    );
+  }
 
   return result;
 };

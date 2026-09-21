@@ -1,35 +1,52 @@
 const API_URL = "http://localhost:5000/api/projects";
 
+const getHeaders = () => {
+  const token = localStorage.getItem("devdash_token");
+
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+};
+
 // Get all projects
 export const getProjects = async () => {
-  const response = await fetch(API_URL);
+  const response = await fetch(API_URL, {
+    headers: getHeaders(),
+  });
+
+  const result = await response.json();
 
   if (!response.ok) {
-    throw new Error("Failed to fetch projects");
+    throw new Error(
+      result.message ||
+        "Failed to fetch projects"
+    );
   }
 
-  return response.json();
+  return result;
 };
 
 // Create project
 export const createProject = async (projectData) => {
   const response = await fetch(API_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: getHeaders(),
     body: JSON.stringify(projectData),
   });
 
   const result = await response.json();
 
   if (!response.ok) {
-    console.error("Create project backend error:", result);
+    console.error(
+      "Create project backend error:",
+      result
+    );
 
     throw new Error(
       result.message ||
-      result.error ||
-      "Failed to create project"
+        result.error ||
+        "Failed to create project"
     );
   }
 
@@ -37,31 +54,49 @@ export const createProject = async (projectData) => {
 };
 
 // Update project
-export const updateProject = async (id, projectData) => {
-  const response = await fetch(`${API_URL}/${id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(projectData),
-  });
+export const updateProject = async (
+  id,
+  projectData
+) => {
+  const response = await fetch(
+    `${API_URL}/${id}`,
+    {
+      method: "PUT",
+      headers: getHeaders(),
+      body: JSON.stringify(projectData),
+    }
+  );
+
+  const result = await response.json();
 
   if (!response.ok) {
-    throw new Error("Failed to update project");
+    throw new Error(
+      result.message ||
+        "Failed to update project"
+    );
   }
 
-  return response.json();
+  return result;
 };
 
 // Delete project
 export const deleteProject = async (id) => {
-  const response = await fetch(`${API_URL}/${id}`, {
-    method: "DELETE",
-  });
+  const response = await fetch(
+    `${API_URL}/${id}`,
+    {
+      method: "DELETE",
+      headers: getHeaders(),
+    }
+  );
+
+  const result = await response.json();
 
   if (!response.ok) {
-    throw new Error("Failed to delete project");
+    throw new Error(
+      result.message ||
+        "Failed to delete project"
+    );
   }
 
-  return response.json();
+  return result;
 };

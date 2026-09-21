@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+
 import Dashboard from "./pages/Dashboard";
 import Analytics from "./pages/Analytics";
 import Projects from "./pages/Projects";
@@ -12,160 +15,515 @@ import { getProjects } from "./api/projectApi";
 import { getTasks } from "./api/taskApi";
 
 function App() {
-  const [currentPage, setCurrentPage] = useState("dashboard");
+  // =========================================================
+  // SAVED ACCOUNTS
+  // =========================================================
 
-  const [taskList, setTaskList] = useState([]);
-  const [projectList, setProjectList] = useState([]);
+  const [accounts, setAccounts] = useState(() => {
+    const savedAccounts = localStorage.getItem("devdash_accounts");
 
-  // Shared user profile
-  const [userProfile, setUserProfile] = useState(() => {
-    const savedProfile = localStorage.getItem("devdash_user_profile");
-
-    if (savedProfile) {
+    if (savedAccounts) {
       try {
-        return JSON.parse(savedProfile);
+        return JSON.parse(savedAccounts);
       } catch (error) {
-        console.error("Failed to load saved profile:", error);
+        console.error(
+          "Failed to load saved accounts:",
+          error
+        );
       }
     }
 
-    return {
-      name: "Rohith",
-      role: "Developer",
-    };
+    const oldToken = localStorage.getItem("devdash_token");
+    const oldUser = localStorage.getItem("devdash_user");
+
+    if (oldToken && oldUser) {
+      try {
+        const user = JSON.parse(oldUser);
+
+        return [
+          {
+            token: oldToken,
+            user,
+          },
+        ];
+      } catch (error) {
+        console.error(
+          "Failed to migrate existing account:",
+          error
+        );
+      }
+    }
+
+    return [];
   });
 
-  // Save profile to localStorage
+  // =========================================================
+  // ACTIVE USER
+  // =========================================================
+
+  const [userProfile, setUserProfile] = useState(() => {
+    const savedUser = localStorage.getItem("devdash_user");
+
+    if (savedUser) {
+      try {
+        return JSON.parse(savedUser);
+      } catch (error) {
+        console.error(
+          "Failed to load saved user:",
+          error
+        );
+      }
+    }
+
+    return null;
+  });
+
+  // =========================================================
+  // AUTHENTICATION
+  // =========================================================
+
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return Boolean(
+      localStorage.getItem("devdash_token")
+    );
+  });
+
+  const [authPage, setAuthPage] = useState("login");
+
+  // =========================================================
+  // APPLICATION STATE
+  // =========================================================
+
+  const [currentPage, setCurrentPage] =
+    useState("dashboard");
+
+  const [taskList, setTaskList] = useState([]);
+  const [projectList, setProjectList] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // =========================================================
+  // DARK MODE
+  // =========================================================
+
+  const [darkMode, setDarkMode] = useState(() => {
+    return (
+      localStorage.getItem("devdash_theme") === "dark"
+    );
+  });
+
+  // =========================================================
+  // SAVE ACCOUNTS
+  // =========================================================
+
   useEffect(() => {
     localStorage.setItem(
-      "devdash_user_profile",
-      JSON.stringify(userProfile)
+      "devdash_accounts",
+      JSON.stringify(accounts)
     );
+  }, [accounts]);
+
+  // =========================================================
+  // SAVE ACTIVE USER
+  // =========================================================
+
+  useEffect(() => {
+    if (userProfile) {
+      localStorage.setItem(
+        "devdash_user",
+        JSON.stringify(userProfile)
+      );
+
+      setAccounts((previousAccounts) =>
+        previousAccounts.map((account) =>
+          String(account.user?.id) ===
+          String(userProfile.id)
+            ? {
+                ...account,
+                user: userProfile,
+              }
+            : account
+        )
+      );
+    }
   }, [userProfile]);
 
-  const [isLoading, setIsLoading] = useState(true);
+  // =========================================================
+  // APPLY DARK MODE
+  // =========================================================
 
-  // Load workspace data
   useEffect(() => {
+    const root = document.documentElement;
+
+    if (darkMode) {
+      root.classList.add("dark");
+
+      localStorage.setItem(
+        "devdash_theme",
+        "dark"
+      );
+    } else {
+      root.classList.remove("dark");
+
+      localStorage.setItem(
+        "devdash_theme",
+        "light"
+      );
+    }
+  }, [darkMode]);
+
+  // =========================================================
+  // NOTIFICATION NAVIGATION
+  // =========================================================
+
+  useEffect(() => {
+    const handleNotificationNavigation = (event) => {
+      const page = event.detail;
+
+      if (!page) {
+        return;
+      }
+
+      // Only allow valid application pages
+      const validPages = [
+        "dashboard",
+        "analytics",
+        "projects",
+        "ai-assistant",
+        "tasks",
+        "calendar",
+        "settings",
+      ];
+
+      if (validPages.includes(page)) {
+        setCurrentPage(page);
+      }
+    };
+
+    window.addEventListener(
+      "devdash:navigate",
+      handleNotificationNavigation
+    );
+
+    return () => {
+      window.removeEventListener(
+        "devdash:navigate",
+        handleNotificationNavigation
+      );
+    };
+  }, []);
+
+  // =========================================================
+  // ADD ANOTHER ACCOUNT
+  // =========================================================
+
+  useEffect(() => {
+    const handleAddAccount = () => {
+      localStorage.removeItem("devdash_token");
+      localStorage.removeItem("devdash_user");
+
+      setIsAuthenticated(false);
+      setUserProfile(null);
+
+      setTaskList([]);
+      setProjectList([]);
+
+      setSearchQuery("");
+
+      setCurrentPage("dashboard");
+      setAuthPage("login");
+    };
+
+    window.addEventListener(
+      "devdash:add-account",
+      handleAddAccount
+    );
+
+    return () => {
+      window.removeEventListener(
+        "devdash:add-account",
+        handleAddAccount
+      );
+    };
+  }, []);
+
+  // =========================================================
+  // LOGIN / REGISTER HELPER
+  // =========================================================
+
+  const handleAuthSuccess = (user) => {
+    const token =
+      localStorage.getItem("devdash_token");
+
+    if (!token) {
+      console.error(
+        "Auth succeeded but JWT token was not found."
+      );
+
+      return;
+    }
+
+    const newAccount = {
+      token,
+      user,
+    };
+
+    setAccounts((previousAccounts) => {
+      const existingIndex =
+        previousAccounts.findIndex(
+          (account) =>
+            String(account.user?.id) ===
+            String(user?.id)
+        );
+
+      if (existingIndex !== -1) {
+        const updatedAccounts = [
+          ...previousAccounts,
+        ];
+
+        updatedAccounts[existingIndex] =
+          newAccount;
+
+        return updatedAccounts;
+      }
+
+      return [
+        ...previousAccounts,
+        newAccount,
+      ];
+    });
+
+    setUserProfile(user);
+    setIsAuthenticated(true);
+    setAuthPage("login");
+    setCurrentPage("dashboard");
+    setSearchQuery("");
+  };
+
+  const handleLogin = handleAuthSuccess;
+  const handleRegister = handleAuthSuccess;
+
+  // =========================================================
+  // SWITCH ACCOUNT
+  // =========================================================
+
+  const handleSwitchAccount = (account) => {
+    if (
+      !account?.token ||
+      !account?.user
+    ) {
+      return;
+    }
+
+    localStorage.setItem(
+      "devdash_token",
+      account.token
+    );
+
+    localStorage.setItem(
+      "devdash_user",
+      JSON.stringify(account.user)
+    );
+
+    setUserProfile(account.user);
+    setIsAuthenticated(true);
+
+    setTaskList([]);
+    setProjectList([]);
+
+    setCurrentPage("dashboard");
+    setSearchQuery("");
+  };
+
+  // =========================================================
+  // LOGOUT CURRENT ACCOUNT
+  // =========================================================
+
+  const handleLogout = () => {
+    localStorage.removeItem(
+      "devdash_token"
+    );
+
+    localStorage.removeItem(
+      "devdash_user"
+    );
+
+    localStorage.removeItem(
+      "devdash_user_profile"
+    );
+
+    setIsAuthenticated(false);
+    setUserProfile(null);
+
+    setTaskList([]);
+    setProjectList([]);
+
+    setSearchQuery("");
+
+    setCurrentPage("dashboard");
+    setAuthPage("login");
+  };
+
+  // =========================================================
+  // LOAD WORKSPACE DATA
+  // =========================================================
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     const loadData = async () => {
       try {
-        setIsLoading(true);
-
-        const [projectsResponse, tasksResponse] = await Promise.all([
+        const [
+          projectsResponse,
+          tasksResponse,
+        ] = await Promise.all([
           getProjects(),
           getTasks(),
         ]);
 
-        setProjectList(projectsResponse.data || []);
-        setTaskList(tasksResponse.data || []);
-      } catch (err) {
-        console.error("Failed to load workspace data:", err);
+        setProjectList(
+          projectsResponse.data || []
+        );
 
-        // Keep the application usable even if the backend
-        // temporarily fails.
+        setTaskList(
+          tasksResponse.data || []
+        );
+      } catch (error) {
+        console.error(
+          "Failed to load workspace data:",
+          error
+        );
+
         setProjectList([]);
         setTaskList([]);
-      } finally {
-        setIsLoading(false);
       }
     };
 
     loadData();
-  }, []);
+  }, [
+    isAuthenticated,
+    userProfile?.id,
+  ]);
 
-  // Loading screen
-  if (isLoading) {
+  // =========================================================
+  // CLEAR SEARCH WHEN CHANGING PAGES
+  // =========================================================
+
+  useEffect(() => {
+    setSearchQuery("");
+  }, [currentPage]);
+
+  // =========================================================
+  // AUTHENTICATION SCREENS
+  // =========================================================
+
+  if (!isAuthenticated) {
+    if (authPage === "register") {
+      return (
+        <Register
+          onRegister={handleRegister}
+          onNavigate={setAuthPage}
+        />
+      );
+    }
+
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="text-3xl">⏳</div>
-
-          <h2 className="mt-3 text-lg font-semibold text-slate-900">
-            Loading workspace...
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Connecting to the backend.
-          </p>
-        </div>
-      </div>
+      <Login
+        onLogin={handleLogin}
+        onNavigate={setAuthPage}
+      />
     );
   }
 
+  // =========================================================
+  // COMMON PAGE PROPS
+  // =========================================================
+
+  const commonPageProps = {
+    currentPage,
+    onNavigate: setCurrentPage,
+    userProfile,
+    searchQuery,
+    setSearchQuery,
+    onLogout: handleLogout,
+    accounts,
+    onSwitchAccount: handleSwitchAccount,
+  };
+
+  // =========================================================
+  // AUTHENTICATED APPLICATION
+  // =========================================================
+
   return (
     <>
-      {/* Dashboard */}
       {currentPage === "dashboard" && (
         <Dashboard
-          currentPage={currentPage}
-          onNavigate={setCurrentPage}
+          {...commonPageProps}
           taskList={taskList}
           setTaskList={setTaskList}
           projectList={projectList}
           setProjectList={setProjectList}
-          userProfile={userProfile}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
         />
       )}
 
-      {/* Analytics */}
       {currentPage === "analytics" && (
         <Analytics
-          currentPage={currentPage}
-          onNavigate={setCurrentPage}
+          {...commonPageProps}
           tasks={taskList}
           projects={projectList}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
         />
       )}
 
-      {/* Projects */}
       {currentPage === "projects" && (
         <Projects
-          currentPage={currentPage}
-          onNavigate={setCurrentPage}
+          {...commonPageProps}
           projects={projectList}
           setProjectList={setProjectList}
-          userProfile={userProfile}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
         />
       )}
 
-      {/* AI Assistant */}
       {currentPage === "ai-assistant" && (
         <AIAssistant
-          currentPage={currentPage}
-          onNavigate={setCurrentPage}
+          {...commonPageProps}
           tasks={taskList}
           projects={projectList}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
         />
       )}
 
-      {/* Tasks */}
       {currentPage === "tasks" && (
         <Tasks
-          currentPage={currentPage}
-          onNavigate={setCurrentPage}
+          {...commonPageProps}
           tasks={taskList}
           setTaskList={setTaskList}
           projects={projectList}
           setProjectList={setProjectList}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
         />
       )}
 
-      {/* Calendar */}
       {currentPage === "calendar" && (
         <Calendar
-          currentPage={currentPage}
-          onNavigate={setCurrentPage}
+          {...commonPageProps}
           tasks={taskList}
         />
       )}
 
-      {/* Settings */}
       {currentPage === "settings" && (
         <Settings
-          currentPage={currentPage}
-          onNavigate={setCurrentPage}
-          userProfile={userProfile}
+          {...commonPageProps}
           setUserProfile={setUserProfile}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
         />
       )}
     </>

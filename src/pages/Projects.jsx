@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Navbar from "../components/layout/Navbar";
 import Sidebar from "../components/layout/Sidebar";
 
@@ -8,13 +8,23 @@ import {
   updateProject,
   deleteProject,
 } from "../api/projectApi";
+
 function Projects({
   currentPage,
   onNavigate,
   projects,
   setProjectList,
   userProfile,
+  onLogout,
+  accounts,
+  onSwitchAccount,
 }) {
+  // =========================================================
+  // STATE
+  // =========================================================
+
+  const [searchQuery, setSearchQuery] = useState("");
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
 
@@ -28,9 +38,10 @@ function Projects({
     priority: "Medium",
   });
 
-  // --------------------------------
-  // Load Projects
-  // --------------------------------
+  // =========================================================
+  // LOAD PROJECTS
+  // =========================================================
+
   useEffect(() => {
     const loadProjects = async () => {
       try {
@@ -39,9 +50,9 @@ function Projects({
 
         const response = await getProjects();
 
-        setProjectList(response.data);
-      } catch (err) {
-        console.error("Failed to load projects:", err);
+        setProjectList(response.data || []);
+      } catch (error) {
+        console.error("Failed to load projects:", error);
         setError("Failed to load projects.");
       } finally {
         setIsLoading(false);
@@ -51,9 +62,31 @@ function Projects({
     loadProjects();
   }, [setProjectList]);
 
-  // --------------------------------
-  // Open New Project Modal
-  // --------------------------------
+  // =========================================================
+  // SEARCH PROJECTS
+  // =========================================================
+
+  const filteredProjects = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    if (!query) {
+      return projects;
+    }
+
+    return projects.filter((project) => {
+      return (
+        project.name?.toLowerCase().includes(query) ||
+        project.description?.toLowerCase().includes(query) ||
+        project.status?.toLowerCase().includes(query) ||
+        project.priority?.toLowerCase().includes(query)
+      );
+    });
+  }, [projects, searchQuery]);
+
+  // =========================================================
+  // NEW PROJECT
+  // =========================================================
+
   const handleNewProject = () => {
     setEditingProject(null);
 
@@ -68,9 +101,10 @@ function Projects({
     setIsModalOpen(true);
   };
 
-  // --------------------------------
-  // Open Edit Project Modal
-  // --------------------------------
+  // =========================================================
+  // EDIT PROJECT
+  // =========================================================
+
   const handleEditProject = (project) => {
     setEditingProject(project);
 
@@ -85,9 +119,10 @@ function Projects({
     setIsModalOpen(true);
   };
 
-  // --------------------------------
-  // Handle Form Changes
-  // --------------------------------
+  // =========================================================
+  // FORM CHANGE
+  // =========================================================
+
   const handleChange = (event) => {
     const { name, value } = event.target;
 
@@ -97,9 +132,10 @@ function Projects({
     }));
   };
 
-  // --------------------------------
-  // Create / Update Project
-  // --------------------------------
+  // =========================================================
+  // CREATE / UPDATE PROJECT
+  // =========================================================
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -111,7 +147,6 @@ function Projects({
     try {
       setError("");
 
-      // Update existing project
       if (editingProject) {
         const response = await updateProject(
           editingProject._id,
@@ -125,10 +160,7 @@ function Projects({
               : project
           )
         );
-      }
-
-      // Create new project
-      else {
+      } else {
         const response = await createProject(formData);
 
         setProjectList((previousProjects) => [
@@ -139,8 +171,9 @@ function Projects({
 
       setIsModalOpen(false);
       setEditingProject(null);
-    } catch (err) {
-      console.error("Project operation failed:", err);
+    } catch (error) {
+      console.error("Project operation failed:", error);
+
       setError(
         editingProject
           ? "Failed to update project."
@@ -149,17 +182,16 @@ function Projects({
     }
   };
 
-  // --------------------------------
-  // Delete Project
-  // --------------------------------
+  // =========================================================
+  // DELETE PROJECT
+  // =========================================================
+
   const handleDeleteProject = async (projectId) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this project?"
     );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     try {
       setError("");
@@ -171,301 +203,507 @@ function Projects({
           (project) => project._id !== projectId
         )
       );
-    } catch (err) {
-      console.error("Failed to delete project:", err);
+    } catch (error) {
+      console.error("Failed to delete project:", error);
       setError("Failed to delete project.");
     }
   };
 
-  // --------------------------------
-  // Close Modal
-  // --------------------------------
+  // =========================================================
+  // CLOSE MODAL
+  // =========================================================
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingProject(null);
     setError("");
   };
 
-  // --------------------------------
-  // Styles
-  // --------------------------------
+  // =========================================================
+  // STYLES
+  // =========================================================
+
   const statusStyles = {
-    Planning: "bg-slate-100 text-slate-600",
-    "In Progress": "bg-blue-50 text-blue-600",
-    Completed: "bg-green-50 text-green-600",
+    Planning:
+      "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
+
+    "In Progress":
+      "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400",
+
+    Completed:
+      "bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400",
   };
 
   const priorityStyles = {
-    High: "bg-red-50 text-red-600",
-    Medium: "bg-yellow-50 text-yellow-600",
-    Low: "bg-green-50 text-green-600",
+    High:
+      "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400",
+
+    Medium:
+      "bg-yellow-50 text-yellow-600 dark:bg-yellow-950 dark:text-yellow-400",
+
+    Low:
+      "bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400",
   };
 
-  // --------------------------------
-  // Loading State
-  // --------------------------------
+  // =========================================================
+  // LOADING
+  // =========================================================
+
   if (isLoading) {
     return (
-      <div className="h-screen overflow-hidden bg-slate-50">
-        <Navbar />
+      <div className="h-screen select-none overflow-hidden bg-slate-50 dark:bg-slate-950">
+
+        <Navbar
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          showSearch={true}
+        />
 
         <div className="flex h-[calc(100vh-4rem)]">
+
           <Sidebar
             currentPage={currentPage}
             onNavigate={onNavigate}
             userProfile={userProfile}
+            onLogout={onLogout}
+            accounts={accounts}
+            onSwitchAccount={onSwitchAccount}
           />
 
           <main className="flex min-w-0 flex-1 items-center justify-center">
-            <p className="text-sm text-slate-500">
-              Loading projects...
-            </p>
+
+            <div className="text-center">
+
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-blue-500 dark:border-slate-700 dark:border-t-blue-400" />
+
+              <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+                Loading projects...
+              </p>
+
+            </div>
+
           </main>
+
         </div>
       </div>
     );
   }
 
-  // --------------------------------
-  // Main UI
-  // --------------------------------
+  // =========================================================
+  // MAIN PAGE
+  // =========================================================
+
   return (
-    <div className="h-screen overflow-hidden bg-slate-50">
-      <Navbar />
+    <div className="h-screen select-none overflow-hidden bg-slate-50 dark:bg-slate-950">
+
+      {/* =====================================================
+          NAVBAR
+      ===================================================== */}
+
+      <Navbar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        showSearch={true}
+        onLogout={onLogout}
+      />
 
       <div className="flex h-[calc(100vh-4rem)]">
+
+        {/* ===================================================
+            SIDEBAR
+        =================================================== */}
+
         <Sidebar
-  currentPage={currentPage}
-  onNavigate={onNavigate}
-  userProfile={userProfile}
-/>
+          currentPage={currentPage}
+          onNavigate={onNavigate}
+          userProfile={userProfile}
+          onLogout={onLogout}
+          accounts={accounts}
+          onSwitchAccount={onSwitchAccount}
+        />
+
+        {/* ===================================================
+            MAIN CONTENT
+        =================================================== */}
 
         <main className="min-w-0 flex-1 overflow-y-auto">
+
           <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
 
-            {/* Header */}
+            {/* =================================================
+                HEADER
+            ================================================= */}
+
             <section className="mb-8">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
 
                 <div>
-                  <p className="text-sm font-medium text-blue-600">
-                    Workspace
-                  </p>
 
-                  <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                  <div className="flex items-center gap-3">
+
+                    <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                      Workspace
+                    </p>
+
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                      {projects.length}{" "}
+                      {projects.length === 1
+                        ? "project"
+                        : "projects"}
+                    </span>
+
+                  </div>
+
+                  <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
                     Projects
                   </h1>
 
-                  <p className="mt-2 text-sm text-slate-500 sm:text-base">
-                    Manage and track your projects.
+                  <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500 dark:text-slate-400 sm:text-base">
+                    Manage your projects, track progress, and keep
+                    your work organized.
                   </p>
+
                 </div>
 
                 <button
+                  type="button"
                   onClick={handleNewProject}
-                  className="w-full rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-600 sm:w-auto"
+                  className="w-full rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-600 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950 sm:w-auto"
                 >
                   + New Project
                 </button>
 
               </div>
+
             </section>
 
-            {/* Error */}
+            {/* =================================================
+                SEARCH INFORMATION
+            ================================================= */}
+
+            {searchQuery && (
+              <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+
+                <p className="min-w-0 truncate text-sm text-slate-600 dark:text-slate-300">
+
+                  Showing results for{" "}
+
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    "{searchQuery}"
+                  </span>
+
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="shrink-0 text-xs font-semibold text-blue-600 transition hover:text-blue-700 focus:outline-none dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  Clear
+                </button>
+
+              </div>
+            )}
+
+            {/* =================================================
+                ERROR
+            ================================================= */}
+
             {error && (
-              <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
                 {error}
               </div>
             )}
 
-            {/* Count */}
-            <div className="mb-5">
-              <p className="text-sm text-slate-500">
-                {projects.length}{" "}
-                {projects.length === 1 ? "project" : "projects"}{" "}
-                in your workspace
+            {/* =================================================
+                RESULT COUNT
+            ================================================= */}
+
+            <div className="mb-5 flex items-center justify-between">
+
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+
+                {filteredProjects.length}{" "}
+
+                {filteredProjects.length === 1
+                  ? "project"
+                  : "projects"}{" "}
+
+                {searchQuery
+                  ? "found"
+                  : "in your workspace"}
+
               </p>
+
             </div>
 
-            {/* Project List */}
-            {projects.length > 0 ? (
+            {/* =================================================
+                PROJECT LIST
+            ================================================= */}
+
+            {filteredProjects.length > 0 ? (
+
               <div className="grid gap-5 md:grid-cols-2">
 
-                {projects.map((project) => (
-                  <div
-                    key={project._id}
-                    className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
-                  >
+                {filteredProjects.map((project) => {
 
-                    {/* Project Header */}
-                    <div className="flex items-start justify-between gap-4">
+                  const progress = project.progress || 0;
 
-                      <div className="min-w-0">
-                        <h2 className="text-lg font-semibold text-slate-900">
-                          {project.name}
-                        </h2>
+                  return (
+                    <div
+                      key={project._id}
+                      className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800/80"
+                    >
 
-                        <p className="mt-2 text-sm leading-6 text-slate-500">
-                          {project.description || "No description"}
-                        </p>
-                      </div>
+                      {/* Project Header */}
 
-                      <button
-                        onClick={() => handleEditProject(project)}
-                        className="shrink-0 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
-                      >
-                        Edit
-                      </button>
+                      <div className="flex items-start justify-between gap-4">
 
-                    </div>
+                        <div className="min-w-0">
 
-                    {/* Status + Priority */}
-                    <div className="mt-5 flex flex-wrap gap-2">
+                          <h2 className="truncate text-lg font-semibold text-slate-900 dark:text-white">
+                            {project.name}
+                          </h2>
 
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          statusStyles[project.status] ||
-                          statusStyles.Planning
-                        }`}
-                      >
-                        {project.status || "Planning"}
-                      </span>
+                          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                            {project.description ||
+                              "No description provided."}
+                          </p>
 
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          priorityStyles[project.priority] ||
-                          priorityStyles.Medium
-                        }`}
-                      >
-                        {project.priority || "Medium"} Priority
-                      </span>
+                        </div>
 
-                    </div>
+                        {/* Status */}
 
-                    {/* Progress */}
-                    <div className="mt-6">
-
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-500">
-                          Progress
+                        <span
+                          className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            statusStyles[project.status] ||
+                            statusStyles.Planning
+                          }`}
+                        >
+                          {project.status || "Planning"}
                         </span>
 
-                        <span className="font-semibold text-slate-700">
-                          {project.progress || 0}%
+                      </div>
+
+                      {/* Priority */}
+
+                      <div className="mt-4">
+
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            priorityStyles[project.priority] ||
+                            priorityStyles.Medium
+                          }`}
+                        >
+                          {project.priority || "Medium"} Priority
                         </span>
+
                       </div>
 
-                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                        <div
-                          className="h-full rounded-full bg-blue-500 transition-all duration-300"
-                          style={{
-                            width: `${project.progress || 0}%`,
-                          }}
-                        />
+                      {/* Progress */}
+
+                      <div className="mt-6">
+
+                        <div className="flex items-center justify-between">
+
+                          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                            Progress
+                          </span>
+
+                          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            {progress}%
+                          </span>
+
+                        </div>
+
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+
+                          <div
+                            className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                            style={{
+                              width: `${Math.min(
+                                Math.max(progress, 0),
+                                100
+                              )}%`,
+                            }}
+                          />
+
+                        </div>
+
+                      </div>
+
+                      {/* Project Statistics */}
+
+                      <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-100 pt-4 dark:border-slate-700">
+
+                        <div>
+
+                          <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                            Tasks
+                          </p>
+
+                          <p className="mt-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            {project.tasksCompleted || 0} /{" "}
+                            {project.totalTasks || 0}
+                          </p>
+
+                        </div>
+
+                        <div className="text-right">
+
+                          <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                            Completion
+                          </p>
+
+                          <p className="mt-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            {progress}%
+                          </p>
+
+                        </div>
+
+                      </div>
+
+                      {/* Actions */}
+
+                      <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-700">
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleDeleteProject(project._id)
+                          }
+                          className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 transition hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500/20 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                        >
+                          Delete
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleEditProject(project)
+                          }
+                          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                        >
+                          Edit Project
+                        </button>
+
                       </div>
 
                     </div>
-
-                    {/* Task Information */}
-                    <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
-
-                      <div>
-                        <p className="text-xs text-slate-400">
-                          Tasks
-                        </p>
-
-                        <p className="mt-1 text-sm font-semibold text-slate-700">
-                          {project.tasksCompleted || 0} /{" "}
-                          {project.totalTasks || 0}
-                        </p>
-                      </div>
-
-                      <div className="text-right">
-                        <p className="text-xs text-slate-400">
-                          Completion
-                        </p>
-
-                        <p className="mt-1 text-sm font-semibold text-slate-700">
-                          {project.progress || 0}%
-                        </p>
-                      </div>
-
-                    </div>
-
-                    {/* Delete */}
-                    <div className="mt-4 border-t border-slate-100 pt-4">
-                      <button
-                        onClick={() =>
-                          handleDeleteProject(project._id)
-                        }
-                        className="text-xs font-medium text-red-500 transition hover:text-red-700"
-                      >
-                        Delete project
-                      </button>
-                    </div>
-
-                  </div>
-                ))}
+                  );
+                })}
 
               </div>
-            ) : (
-              /* Empty State */
-              <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
 
-                <div className="text-4xl">
-                  📁
+            ) : (
+
+              /* =================================================
+                 EMPTY STATE
+                 ================================================= */
+
+              <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
+
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl dark:bg-slate-800">
+                  {searchQuery ? "🔍" : "📁"}
                 </div>
 
-                <h2 className="mt-4 text-lg font-semibold text-slate-900">
-                  No projects yet
+                <h2 className="mt-5 text-lg font-semibold text-slate-900 dark:text-white">
+
+                  {searchQuery
+                    ? "No projects found"
+                    : "No projects yet"}
+
                 </h2>
 
-                <p className="mt-2 text-sm text-slate-500">
-                  Create your first project to get started.
+                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
+
+                  {searchQuery
+                    ? "Try changing your search term or clear the search to view all projects."
+                    : "Create your first project to start organizing your work."}
+
                 </p>
 
-                <button
-                  onClick={handleNewProject}
-                  className="mt-5 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-600"
-                >
-                  + New Project
-                </button>
+                {searchQuery ? (
+
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="mt-5 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    Clear Search
+                  </button>
+
+                ) : (
+
+                  <button
+                    type="button"
+                    onClick={handleNewProject}
+                    className="mt-5 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-600 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950"
+                  >
+                    + New Project
+                  </button>
+
+                )}
 
               </div>
+
             )}
 
           </div>
+
         </main>
+
       </div>
 
-      {/* --------------------------------
-          Add / Edit Project Modal
-      -------------------------------- */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      {/* =====================================================
+          CREATE / EDIT MODAL
+      ===================================================== */}
 
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+      {isModalOpen && (
+
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+
+          <div
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+            onClick={(event) => event.stopPropagation()}
+          >
 
             {/* Modal Header */}
-            <div className="flex items-center justify-between">
+
+            <div className="flex items-start justify-between gap-4">
 
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">
+
+                <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                  {editingProject
+                    ? "Project Settings"
+                    : "New Project"}
+                </p>
+
+                <h2 className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">
+
                   {editingProject
                     ? "Edit Project"
                     : "Create Project"}
+
                 </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm leading-5 text-slate-500 dark:text-slate-400">
+
                   {editingProject
                     ? "Update your project details."
                     : "Add a new project to your workspace."}
+
                 </p>
+
               </div>
 
               <button
+                type="button"
                 onClick={handleCloseModal}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                aria-label="Close modal"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xl leading-none text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
               >
                 ×
               </button>
@@ -473,56 +711,78 @@ function Projects({
             </div>
 
             {/* Form */}
+
             <form
               onSubmit={handleSubmit}
               className="mt-6 space-y-4"
             >
 
               {/* Project Name */}
+
               <div>
-                <label className="text-sm font-medium text-slate-700">
+
+                <label
+                  htmlFor="project-name"
+                  className="text-sm font-medium text-slate-700 dark:text-slate-300"
+                >
                   Project Name
                 </label>
 
                 <input
+                  id="project-name"
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
                   placeholder="Enter project name"
-                  className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-blue-500 dark:focus:ring-blue-950"
                   required
                 />
+
               </div>
 
               {/* Description */}
+
               <div>
-                <label className="text-sm font-medium text-slate-700">
+
+                <label
+                  htmlFor="project-description"
+                  className="text-sm font-medium text-slate-700 dark:text-slate-300"
+                >
                   Description
                 </label>
 
                 <textarea
+                  id="project-description"
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
                   placeholder="Describe your project"
                   rows="3"
-                  className="mt-1.5 w-full resize-none rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  className="mt-1.5 w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-blue-500 dark:focus:ring-blue-950"
                 />
+
               </div>
 
               {/* Status */}
+
               <div>
-                <label className="text-sm font-medium text-slate-700">
+
+                <label
+                  htmlFor="project-status"
+                  className="text-sm font-medium text-slate-700 dark:text-slate-300"
+                >
                   Status
                 </label>
 
                 <select
+                  id="project-status"
                   name="status"
                   value={formData.status}
                   onChange={handleChange}
-                  className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none"
+                  className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-blue-500 dark:focus:ring-blue-950"
                 >
+
                   <option value="Planning">
                     Planning
                   </option>
@@ -534,21 +794,30 @@ function Projects({
                   <option value="Completed">
                     Completed
                   </option>
+
                 </select>
+
               </div>
 
               {/* Priority */}
+
               <div>
-                <label className="text-sm font-medium text-slate-700">
+
+                <label
+                  htmlFor="project-priority"
+                  className="text-sm font-medium text-slate-700 dark:text-slate-300"
+                >
                   Priority
                 </label>
 
                 <select
+                  id="project-priority"
                   name="priority"
                   value={formData.priority}
                   onChange={handleChange}
-                  className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none"
+                  className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-blue-500 dark:focus:ring-blue-950"
                 >
+
                   <option value="High">
                     High
                   </option>
@@ -560,23 +829,34 @@ function Projects({
                   <option value="Low">
                     Low
                   </option>
+
                 </select>
+
               </div>
 
+              {/* Form Error */}
+
+              {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-600 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
+                  {error}
+                </div>
+              )}
+
               {/* Buttons */}
+
               <div className="flex gap-3 pt-2">
 
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                  className="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-600"
+                  className="flex-1 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-600 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
                 >
                   {editingProject
                     ? "Save Changes"
@@ -588,8 +868,11 @@ function Projects({
             </form>
 
           </div>
+
         </div>
+
       )}
+
     </div>
   );
 }

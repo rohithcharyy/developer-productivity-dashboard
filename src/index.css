@@ -1,1 +1,75 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Prevent accidental text selection in the dashboard UI */
+body {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Interactive elements */
+button,
+a {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Text-entry fields remain selectable */
+input,
+textarea,
+[contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+body {
+  user-select: none;
+}
+
+input,
+textarea,
+select,
+button {
+  user-select: auto;
+}
+
+/* Prevent accidental text selection across the application */
+body {
+  user-select: none;
+}
+
+/* Keep normal text selection inside form controls */
+input,
+textarea,
+select,
+button {
+  user-select: auto;
+}
+
+/* =========================================================
+   GLOBAL UI POLISH
+   Prevent accidental text selection across the dashboard
+   ========================================================= */
+
+* {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+}
+
+/* Keep form controls selectable/editable */
+input,
+textarea,
+select {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+}
+
+/* Keep buttons and interactive elements clean */
+button,
+a {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+}

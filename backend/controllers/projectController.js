@@ -1,20 +1,24 @@
+import mongoose from "mongoose";
 import Project from "../models/Project.js";
 
 // GET /api/projects
 const getProjects = async (req, res) => {
   try {
-    const projects = await Project.find();
+    const projects = await Project.find({
+      user: req.user.id,
+    });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: projects.length,
       data: projects,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Fetch projects error:", error);
+
+    return res.status(500).json({
       success: false,
       message: "Failed to fetch projects",
-      error: error.message,
     });
   }
 };
@@ -22,7 +26,19 @@ const getProjects = async (req, res) => {
 // GET /api/projects/:id
 const getProjectById = async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id);
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid project ID",
+      });
+    }
+
+    const project = await Project.findOne({
+      _id: id,
+      user: req.user.id,
+    });
 
     if (!project) {
       return res.status(404).json({
@@ -31,15 +47,16 @@ const getProjectById = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: project,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Fetch project error:", error);
+
+    return res.status(500).json({
       success: false,
       message: "Failed to fetch project",
-      error: error.message,
     });
   }
 };
@@ -54,7 +71,7 @@ const createProject = async (req, res) => {
       priority,
     } = req.body;
 
-    if (!name) {
+    if (!name?.trim()) {
       return res.status(400).json({
         success: false,
         message: "Project name is required",
@@ -62,22 +79,24 @@ const createProject = async (req, res) => {
     }
 
     const project = await Project.create({
-      name,
-      description,
+      user: req.user.id,
+      name: name.trim(),
+      description: description?.trim() || "",
       status,
       priority,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Project created successfully",
       data: project,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Create project error:", error);
+
+    return res.status(500).json({
       success: false,
       message: "Failed to create project",
-      error: error.message,
     });
   }
 };
@@ -85,9 +104,55 @@ const createProject = async (req, res) => {
 // PUT /api/projects/:id
 const updateProject = async (req, res) => {
   try {
-    const project = await Project.findByIdAndUpdate(
-      req.params.id,
-      req.body,
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid project ID",
+      });
+    }
+
+    const {
+      name,
+      description,
+      status,
+      priority,
+    } = req.body;
+
+    // Build an explicit update object.
+    // This prevents unexpected fields from being modified.
+    const updateData = {};
+
+    if (name !== undefined) {
+      if (!name.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Project name cannot be empty",
+        });
+      }
+
+      updateData.name = name.trim();
+    }
+
+    if (description !== undefined) {
+      updateData.description = description.trim();
+    }
+
+    if (status !== undefined) {
+      updateData.status = status;
+    }
+
+    if (priority !== undefined) {
+      updateData.priority = priority;
+    }
+
+    const project = await Project.findOneAndUpdate(
+      {
+        _id: id,
+        user: req.user.id,
+      },
+      updateData,
       {
         new: true,
         runValidators: true,
@@ -101,16 +166,17 @@ const updateProject = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Project updated successfully",
       data: project,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Update project error:", error);
+
+    return res.status(500).json({
       success: false,
       message: "Failed to update project",
-      error: error.message,
     });
   }
 };
@@ -118,9 +184,19 @@ const updateProject = async (req, res) => {
 // DELETE /api/projects/:id
 const deleteProject = async (req, res) => {
   try {
-    const project = await Project.findByIdAndDelete(
-      req.params.id
-    );
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid project ID",
+      });
+    }
+
+    const project = await Project.findOneAndDelete({
+      _id: id,
+      user: req.user.id,
+    });
 
     if (!project) {
       return res.status(404).json({
@@ -129,15 +205,16 @@ const deleteProject = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Project deleted successfully",
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Delete project error:", error);
+
+    return res.status(500).json({
       success: false,
       message: "Failed to delete project",
-      error: error.message,
     });
   }
 };

@@ -2,28 +2,161 @@ import { GoogleGenAI } from "@google/genai";
 import Task from "../models/Task.js";
 import Project from "../models/Project.js";
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+const PRIMARY_MODEL = "gemini-3.6-flash";
+const FALLBACK_MODEL = "gemini-3.7-flash";
 
+const MAX_RETRIES = 2;
+const INITIAL_RETRY_DELAY = 1000;
+
+// ---------------------------------------
+// Wait helper
+// ---------------------------------------
+const wait = (ms) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+// ---------------------------------------
+// Check whether an error is temporary
+// ---------------------------------------
+const isRetryableError = (error) => {
+  const status = error?.status || error?.code;
+
+  return (
+    status === 429 ||
+    status === 500 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504
+  );
+};
+
+// ---------------------------------------
+// Generate Gemini response with retries
+// ---------------------------------------
+const generateWithRetry = async (
+  ai,
+  model,
+  prompt,
+  responseJsonSchema
+) => {
+  let lastError;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(
+        `Generating AI insights using ${model} (attempt ${
+          attempt + 1
+        }/${MAX_RETRIES + 1})`
+      );
+
+      const response = await ai.models.generateContent({
+        model,
+
+        contents: prompt,
+
+        config: {
+          responseMimeType: "application/json",
+          responseJsonSchema,
+        },
+      });
+
+      return response;
+    } catch (error) {
+      lastError = error;
+
+      // Do not retry permanent/client errors
+      if (!isRetryableError(error)) {
+        throw error;
+      }
+
+      // No retry after final attempt
+      if (attempt === MAX_RETRIES) {
+        break;
+      }
+
+      const delay =
+        INITIAL_RETRY_DELAY * Math.pow(2, attempt);
+
+      console.warn(
+        `${model} temporarily unavailable. ` +
+          `Retrying in ${delay}ms...`
+      );
+
+      await wait(delay);
+    }
+  }
+
+  throw lastError;
+};
+
+// ---------------------------------------
+// GET /api/ai/insights
+// ---------------------------------------
 const getAIInsights = async (req, res) => {
   try {
-    // Fetch workspace data from MongoDB
+    // ---------------------------------------
+    // Authentication check
+    // ---------------------------------------
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized",
+      });
+    }
+
+    // ---------------------------------------
+    // Gemini API key check
+    // ---------------------------------------
+    if (!process.env.GEMINI_API_KEY) {
+      console.error(
+        "GEMINI_API_KEY is not configured."
+      );
+
+      return res.status(500).json({
+        success: false,
+        message: "AI service is not configured",
+      });
+    }
+
+    // ---------------------------------------
+    // Initialize Gemini
+    // ---------------------------------------
+    const ai = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+    });
+
+    // ---------------------------------------
+    // Fetch user's workspace
+    // ---------------------------------------
     const [tasks, projects] = await Promise.all([
-      Task.find().lean(),
-      Project.find().lean(),
+      Task.find({
+        user: req.user.id,
+      }).lean(),
+
+      Project.find({
+        user: req.user.id,
+      }).lean(),
     ]);
 
+    // ---------------------------------------
     // Handle empty workspace
-    if (tasks.length === 0 && projects.length === 0) {
+    // ---------------------------------------
+    if (
+      tasks.length === 0 &&
+      projects.length === 0
+    ) {
       return res.status(200).json({
         success: true,
+
         data: {
           summary:
             "There is not enough workspace data for an AI analysis yet.",
+
           focusTask: null,
+
           priorities: [],
+
           risks: [],
+
           recommendations: [
             "Create some projects and tasks to receive personalized productivity insights.",
           ],
@@ -31,19 +164,24 @@ const getAIInsights = async (req, res) => {
       });
     }
 
+    // ---------------------------------------
     // Prepare workspace data
+    // ---------------------------------------
     const workspaceData = {
       projects,
       tasks,
     };
 
+    // ---------------------------------------
     // AI prompt
+    // ---------------------------------------
     const prompt = `
 You are an expert AI developer productivity coach.
 
 Analyze the following developer workspace data.
 
 Your analysis should identify:
+
 - The most important task to work on next
 - High-priority work
 - Overdue or approaching-deadline tasks
@@ -56,6 +194,7 @@ WORKSPACE DATA:
 ${JSON.stringify(workspaceData, null, 2)}
 
 RULES:
+
 1. Use ONLY the supplied workspace data.
 2. Never invent tasks, projects, deadlines, priorities, or statistics.
 3. Give practical and specific recommendations.
@@ -63,68 +202,93 @@ RULES:
 5. If there are no obvious risks, return an empty risks array.
 6. If there are no tasks, focusTask must be null.
 7. Keep the response concise.
-8. Return ONLY valid JSON.
+8. Return ONLY valid JSON matching the supplied schema.
 `;
 
-    // Expected AI response structure
-    const responseSchema = {
+    // ---------------------------------------
+    // Gemini JSON schema
+    // ---------------------------------------
+    const responseJsonSchema = {
       type: "object",
+
       properties: {
         summary: {
           type: "string",
         },
 
         focusTask: {
-          type: "object",
-          nullable: true,
+          type: ["object", "null"],
+
           properties: {
             title: {
               type: "string",
             },
+
             reason: {
               type: "string",
             },
           },
-          required: ["title", "reason"],
+
+          required: [
+            "title",
+            "reason",
+          ],
         },
 
         priorities: {
           type: "array",
+
           items: {
             type: "object",
+
             properties: {
               title: {
                 type: "string",
               },
+
               reason: {
                 type: "string",
               },
+
               priority: {
                 type: "string",
               },
             },
-            required: ["title", "reason", "priority"],
+
+            required: [
+              "title",
+              "reason",
+              "priority",
+            ],
           },
         },
 
         risks: {
           type: "array",
+
           items: {
             type: "object",
+
             properties: {
               title: {
                 type: "string",
               },
+
               description: {
                 type: "string",
               },
             },
-            required: ["title", "description"],
+
+            required: [
+              "title",
+              "description",
+            ],
           },
         },
 
         recommendations: {
           type: "array",
+
           items: {
             type: "string",
           },
@@ -140,48 +304,126 @@ RULES:
       ],
     };
 
-    // Generate AI analysis
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema,
-      },
-    });
+    // ---------------------------------------
+    // Try primary model
+    // ---------------------------------------
+    let response;
 
-    const responseText = response.text;
+    try {
+      response = await generateWithRetry(
+        ai,
+        PRIMARY_MODEL,
+        prompt,
+        responseJsonSchema
+      );
+    } catch (primaryError) {
+      console.error(
+        `${PRIMARY_MODEL} failed after retries:`,
+        primaryError
+      );
 
-    if (!responseText) {
-      throw new Error("AI returned an empty response");
+      // ---------------------------------------
+      // Try fallback model only for temporary
+      // service errors
+      // ---------------------------------------
+      if (!isRetryableError(primaryError)) {
+        throw primaryError;
+      }
+
+      console.warn(
+        `Trying fallback model: ${FALLBACK_MODEL}`
+      );
+
+      response = await generateWithRetry(
+        ai,
+        FALLBACK_MODEL,
+        prompt,
+        responseJsonSchema
+      );
     }
 
-    // Parse AI response
+    // ---------------------------------------
+    // Read response
+    // ---------------------------------------
+    const responseText = response?.text;
+
+    if (!responseText) {
+      console.error(
+        "Gemini returned an empty response."
+      );
+
+      return res.status(502).json({
+        success: false,
+        message:
+          "AI service returned an empty response",
+      });
+    }
+
+    // ---------------------------------------
+    // Parse JSON
+    // ---------------------------------------
     let insights;
 
     try {
       insights = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error("Failed to parse AI response:", responseText);
+    } catch (error) {
+      console.error(
+        "Failed to parse Gemini response:",
+        error.message
+      );
 
-      return res.status(500).json({
+      return res.status(502).json({
         success: false,
-        message: "AI returned an invalid response format",
+        message:
+          "AI service returned an invalid response",
       });
     }
 
-    // Send response
+    // ---------------------------------------
+    // Send result
+    // ---------------------------------------
     return res.status(200).json({
       success: true,
       data: insights,
     });
-  } catch (error) {
+    } catch (error) {
     console.error("AI analysis failed:", error);
 
+    // Gemini service temporarily unavailable
+    if (error?.status === 503) {
+      return res.status(503).json({
+        success: false,
+        message:
+          "The AI service is temporarily unavailable because Gemini is experiencing high demand. Please try again in a few moments.",
+      });
+    }
+
+    // Gemini rate limit
+    if (error?.status === 429) {
+      return res.status(429).json({
+        success: false,
+        message:
+          "The AI service has reached its request limit. Please wait a little and try again.",
+      });
+    }
+
+    // Authentication / API key problem
+    if (
+      error?.status === 401 ||
+      error?.status === 403
+    ) {
+      return res.status(500).json({
+        success: false,
+        message:
+          "The AI service could not be authenticated. Please check the Gemini API configuration.",
+      });
+    }
+
+    // General Gemini/API error
     return res.status(500).json({
       success: false,
-      message: "Failed to generate AI insights",
-      error: error.message,
+      message:
+        "The AI service could not complete your request. Please try again later.",
     });
   }
 };

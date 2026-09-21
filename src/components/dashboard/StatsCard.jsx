@@ -1,27 +1,40 @@
-function StatsCard({ title, value, icon, description }) {
+function StatsCard({
+  title,
+  value,
+  icon,
+  description,
+}) {
   return (
-    <div className="group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-800">
+
+      {/* Top Section */}
       <div className="flex items-start justify-between">
+
         <div>
-          <p className="text-sm font-medium text-slate-500">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
             {title}
           </p>
 
-          <h3 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+          <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
             {value}
-          </h3>
+          </p>
         </div>
 
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-xl transition group-hover:scale-105">
+        {/* Icon */}
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-xl dark:bg-slate-700">
           {icon}
         </div>
+
       </div>
 
-      <div className="mt-5 border-t border-slate-100 pt-4">
-        <p className="text-sm text-slate-500">
-          {description}
-        </p>
-      </div>
+      {/* Divider */}
+      <div className="my-5 border-t border-slate-100 dark:border-slate-700" />
+
+      {/* Description */}
+      <p className="text-sm text-slate-500 dark:text-slate-400">
+        {description}
+      </p>
+
     </div>
   );
 }

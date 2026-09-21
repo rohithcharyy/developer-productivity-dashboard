@@ -7,29 +7,50 @@ function Settings({
   onNavigate,
   userProfile,
   setUserProfile,
+  onLogout,
+  accounts,
+  onSwitchAccount,
 }) {
-  // Profile
-  const [name, setName] = useState(userProfile?.name || "Rohith");
+  // =========================================================
+  // PROFILE
+  // =========================================================
+
+  const [name, setName] = useState(
+    userProfile?.name || "Rohith"
+  );
+
   const [role, setRole] = useState(
     userProfile?.role || "Developer"
   );
 
-  // Notifications
+  // =========================================================
+  // NOTIFICATIONS
+  // =========================================================
+
   const [taskReminders, setTaskReminders] = useState(true);
   const [deadlineAlerts, setDeadlineAlerts] = useState(true);
   const [streakNotifications, setStreakNotifications] =
     useState(true);
 
-  // Appearance
+  // =========================================================
+  // APPEARANCE
+  // =========================================================
+
   const [compactMode, setCompactMode] = useState(false);
 
-  // Productivity
+  // =========================================================
+  // PRODUCTIVITY
+  // =========================================================
+
   const [dailyGoal, setDailyGoal] = useState(5);
   const [streakTracking, setStreakTracking] = useState(true);
 
   const [saved, setSaved] = useState(false);
 
-  // Keep form fields synchronized with shared profile
+  // =========================================================
+  // SYNC PROFILE
+  // =========================================================
+
   useEffect(() => {
     if (userProfile) {
       setName(userProfile.name || "Rohith");
@@ -37,28 +58,33 @@ function Settings({
     }
   }, [userProfile]);
 
-  // Save settings
- const handleSave = () => {
-  const updatedProfile = {
-    name: name.trim() || "Rohith",
-    role: role.trim() || "Developer",
+  // =========================================================
+  // SAVE SETTINGS
+  // =========================================================
+
+  const handleSave = () => {
+    const updatedProfile = {
+      ...userProfile,
+      name: name.trim() || "Rohith",
+      role: role.trim() || "Developer",
+    };
+
+    setUserProfile(updatedProfile);
+
+    setSaved(true);
+
+    setTimeout(() => {
+      setSaved(false);
+    }, 2000);
   };
 
-  console.log("Saving profile:", updatedProfile);
+  // =========================================================
+  // RESET SETTINGS
+  // =========================================================
 
-  setUserProfile(updatedProfile);
-
-  setSaved(true);
-
-  setTimeout(() => {
-    setSaved(false);
-  }, 2000);
-};
-
-  // Reset settings
   const handleReset = () => {
-    setName("Rohith");
-    setRole("Developer");
+    setName(userProfile?.name || "Rohith");
+    setRole(userProfile?.role || "Developer");
 
     setTaskReminders(true);
     setDeadlineAlerts(true);
@@ -70,107 +96,144 @@ function Settings({
     setStreakTracking(true);
   };
 
-  return (
-    <div className="h-screen overflow-hidden bg-slate-50">
+  // =========================================================
+  // RENDER
+  // =========================================================
 
-      <Navbar />
+  return (
+    <div className="h-screen overflow-hidden bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
+
+      {/* =====================================================
+          NAVBAR
+      ===================================================== */}
+
+      <Navbar onLogout={onLogout} />
 
       <div className="flex h-[calc(100vh-4rem)]">
 
-        {/* Sidebar */}
-        <Sidebar
-  currentPage={currentPage}
-  onNavigate={onNavigate}
-  userProfile={userProfile}
-/>
+        {/* ===================================================
+            SIDEBAR
+        =================================================== */}
 
-        {/* Main Content */}
-        <main className="min-w-0 flex-1 overflow-y-auto">
+        <Sidebar
+          currentPage={currentPage}
+          onNavigate={onNavigate}
+          userProfile={userProfile}
+          onLogout={onLogout}
+          accounts={accounts}
+          onSwitchAccount={onSwitchAccount}
+        />
+
+        {/* ===================================================
+            MAIN CONTENT
+        =================================================== */}
+
+        <main className="min-w-0 flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950">
 
           <div className="mx-auto max-w-5xl p-4 sm:p-6 lg:p-8">
 
-            {/* Header */}
-            <section className="mb-8">
-              <p className="text-sm font-medium text-blue-600">
+            {/* =================================================
+                HEADER
+            ================================================= */}
+
+            <section className="mb-7">
+
+              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
                 Workspace preferences
               </p>
 
-              <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
                 Settings
               </h1>
 
-              <p className="mt-2 text-sm text-slate-500 sm:text-base">
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 sm:text-base">
                 Customize your DevDash workspace and productivity
                 experience.
               </p>
+
             </section>
 
-            <div className="space-y-6">
+            <div className="space-y-5">
 
-              {/* PROFILE */}
-              <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+              {/* =================================================
+                  PROFILE
+              ================================================= */}
 
-                <div className="border-b border-slate-200 p-5 sm:p-6">
-                  <h2 className="text-lg font-semibold text-slate-900">
+              <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+
+                <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-700 sm:px-6">
+
+                  <h2 className="text-base font-semibold text-slate-900 dark:text-white">
                     Profile
                   </h2>
 
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     Manage your developer profile.
                   </p>
+
                 </div>
 
-                <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
+                <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
 
                   {/* Name */}
                   <div>
-                    <label className="text-sm font-medium text-slate-700">
+
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                       Name
                     </label>
 
                     <input
                       type="text"
                       value={name}
-                      onChange={(e) =>
-                        setName(e.target.value)
+                      onChange={(event) =>
+                        setName(event.target.value)
                       }
-                      className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-400"
+                      className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
                     />
+
                   </div>
 
                   {/* Role */}
                   <div>
-                    <label className="text-sm font-medium text-slate-700">
+
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                       Role
                     </label>
 
                     <input
                       type="text"
                       value={role}
-                      onChange={(e) =>
-                        setRole(e.target.value)
+                      onChange={(event) =>
+                        setRole(event.target.value)
                       }
-                      className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-slate-400"
+                      className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
                     />
+
                   </div>
 
                 </div>
+
               </section>
 
-              {/* NOTIFICATIONS */}
-              <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+              {/* =================================================
+                  NOTIFICATIONS
+              ================================================= */}
 
-                <div className="border-b border-slate-200 p-5 sm:p-6">
-                  <h2 className="text-lg font-semibold text-slate-900">
+              <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+
+                <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-700 sm:px-6">
+
+                  <h2 className="text-base font-semibold text-slate-900 dark:text-white">
                     Notifications
                   </h2>
 
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     Configure your notification preferences.
                   </p>
+
                 </div>
 
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-slate-100 dark:divide-slate-700">
 
                   <SettingToggle
                     title="Task reminders"
@@ -194,22 +257,28 @@ function Settings({
                   />
 
                 </div>
+
               </section>
 
-              {/* APPEARANCE */}
-              <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+              {/* =================================================
+                  APPEARANCE
+              ================================================= */}
 
-                <div className="border-b border-slate-200 p-5 sm:p-6">
-                  <h2 className="text-lg font-semibold text-slate-900">
+              <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+
+                <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-700 sm:px-6">
+
+                  <h2 className="text-base font-semibold text-slate-900 dark:text-white">
                     Appearance
                   </h2>
 
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     Customize the appearance of DevDash.
                   </p>
+
                 </div>
 
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-slate-100 dark:divide-slate-700">
 
                   <SettingToggle
                     title="Compact mode"
@@ -219,30 +288,37 @@ function Settings({
                   />
 
                 </div>
+
               </section>
 
-              {/* PRODUCTIVITY */}
-              <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+              {/* =================================================
+                  PRODUCTIVITY
+              ================================================= */}
 
-                <div className="border-b border-slate-200 p-5 sm:p-6">
-                  <h2 className="text-lg font-semibold text-slate-900">
+              <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+
+                <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-700 sm:px-6">
+
+                  <h2 className="text-base font-semibold text-slate-900 dark:text-white">
                     Productivity
                   </h2>
 
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     Configure your productivity goals.
                   </p>
+
                 </div>
 
-                <div className="space-y-6 p-5 sm:p-6">
+                <div className="space-y-5 p-5 sm:p-6">
 
                   {/* Daily Goal */}
                   <div>
-                    <label className="text-sm font-medium text-slate-700">
+
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                       Daily task goal
                     </label>
 
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                       Set the number of tasks you want to complete
                       each day.
                     </p>
@@ -254,19 +330,20 @@ function Settings({
                         min="1"
                         max="50"
                         value={dailyGoal}
-                        onChange={(e) =>
+                        onChange={(event) =>
                           setDailyGoal(
-                            Number(e.target.value)
+                            Number(event.target.value)
                           )
                         }
-                        className="w-24 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
+                        className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
                       />
 
-                      <span className="text-sm text-slate-500">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">
                         tasks / day
                       </span>
 
                     </div>
+
                   </div>
 
                   {/* Streak Tracking */}
@@ -278,26 +355,30 @@ function Settings({
                   />
 
                 </div>
+
               </section>
 
-              {/* AI */}
-              <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+              {/* =================================================
+                  AI ASSISTANT
+              ================================================= */}
 
-                <div className="border-b border-slate-200 p-5 sm:p-6">
+              <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+
+                <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-700 sm:px-6">
 
                   <div className="flex items-center gap-2">
 
-                    <h2 className="text-lg font-semibold text-slate-900">
+                    <h2 className="text-base font-semibold text-slate-900 dark:text-white">
                       AI Assistant
                     </h2>
 
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                       Available
                     </span>
 
                   </div>
 
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     AI-powered productivity analysis and
                     recommendations.
                   </p>
@@ -306,13 +387,13 @@ function Settings({
 
                 <div className="p-5 sm:p-6">
 
-                  <div className="rounded-lg bg-slate-50 p-4">
+                  <div className="rounded-lg bg-slate-50 p-4 dark:bg-slate-900">
 
-                    <p className="text-sm font-medium text-slate-800">
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
                       🤖 DevDash AI
                     </p>
 
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                    <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
                       Your AI assistant analyzes your tasks,
                       projects and productivity patterns to provide
                       useful recommendations.
@@ -321,19 +402,25 @@ function Settings({
                   </div>
 
                 </div>
+
               </section>
 
-              {/* ACTIONS */}
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              {/* =================================================
+                  ACTIONS
+              ================================================= */}
+
+              <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:justify-end">
 
                 <button
+                  type="button"
                   onClick={handleReset}
-                  className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                 >
                   Reset
                 </button>
 
                 <button
+                  type="button"
                   onClick={handleSave}
                   className="rounded-lg bg-blue-500 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-600"
                 >
@@ -342,26 +429,30 @@ function Settings({
 
               </div>
 
-              {/* DANGER ZONE */}
-              <section className="rounded-xl border border-red-200 bg-white shadow-sm">
+              {/* =================================================
+                  DANGER ZONE
+              ================================================= */}
+
+              <section className="rounded-xl border border-red-200 bg-white shadow-sm dark:border-red-900/60 dark:bg-slate-800">
 
                 <div className="p-5 sm:p-6">
 
-                  <h2 className="text-lg font-semibold text-red-600">
+                  <h2 className="text-base font-semibold text-red-600 dark:text-red-400">
                     Danger Zone
                   </h2>
 
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     These actions can affect your dashboard data.
                   </p>
 
                   <button
+                    type="button"
                     onClick={() =>
                       alert(
                         "Reset functionality will be connected later."
                       )
                     }
-                    className="mt-4 rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                    className="mt-4 rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/30"
                   >
                     Reset Dashboard Data
                   </button>
@@ -370,20 +461,23 @@ function Settings({
 
               </section>
 
-              <div className="h-8"></div>
+              <div className="h-6" />
 
             </div>
+
           </div>
 
         </main>
+
       </div>
+
     </div>
   );
 }
 
-/* =========================================
+/* =========================================================
    REUSABLE TOGGLE
-========================================= */
+========================================================= */
 
 function SettingToggle({
   title,
@@ -392,15 +486,15 @@ function SettingToggle({
   onChange,
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 p-5 sm:p-6">
+    <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
 
       <div className="min-w-0">
 
-        <h3 className="text-sm font-semibold text-slate-900">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
           {title}
         </h3>
 
-        <p className="mt-1 text-xs leading-5 text-slate-500">
+        <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
           {description}
         </p>
 
@@ -412,15 +506,16 @@ function SettingToggle({
         className={`relative h-6 w-11 shrink-0 rounded-full transition ${
           enabled
             ? "bg-blue-500"
-            : "bg-slate-200"
+            : "bg-slate-200 dark:bg-slate-600"
         }`}
         aria-pressed={enabled}
+        aria-label={`${title}: ${
+          enabled ? "enabled" : "disabled"
+        }`}
       >
         <span
           className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition ${
-            enabled
-              ? "left-6"
-              : "left-1"
+            enabled ? "left-6" : "left-1"
           }`}
         />
       </button>
