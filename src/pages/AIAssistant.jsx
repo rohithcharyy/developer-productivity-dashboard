@@ -29,8 +29,8 @@ function AIAssistant({
         throw new Error("You are not logged in.");
       }
 
-      const response = await fetch(
-        "http://localhost:5000/api/ai/insights",
+    const response = await fetch(
+  "https://devdash-backend.onrender.com/api/ai/insights",
         {
           method: "GET",
           headers: {

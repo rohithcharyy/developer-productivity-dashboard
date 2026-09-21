@@ -1,5 +1,4 @@
-const API_URL = "http://localhost:5000/api/auth";
-
+const API_URL = "https://devdash-backend.onrender.com/api/auth";
 // Register user
 export const registerUser = async (userData) => {
   const response = await fetch(`${API_URL}/register`, {

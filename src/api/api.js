@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://devdash-backend.onrender.com/api";
 
 // Get saved JWT token
 const getToken = () => {
@@ -19,7 +19,6 @@ const getHeaders = () => {
 // PROJECT APIs
 // =========================================================
 
-// Get all projects
 export const getProjects = async () => {
   const response = await fetch(`${API_URL}/projects`, {
     headers: getHeaders(),
@@ -36,7 +35,6 @@ export const getProjects = async () => {
   return result;
 };
 
-// Create project
 export const createProject = async (project) => {
   const response = await fetch(`${API_URL}/projects`, {
     method: "POST",
@@ -47,10 +45,7 @@ export const createProject = async (project) => {
   const result = await response.json();
 
   if (!response.ok) {
-    console.error(
-      "Create project backend error:",
-      result
-    );
+    console.error("Create project backend error:", result);
 
     throw new Error(
       result.message ||
@@ -62,7 +57,6 @@ export const createProject = async (project) => {
   return result;
 };
 
-// Update project
 export const updateProject = async (id, project) => {
   const response = await fetch(
     `${API_URL}/projects/${id}`,
@@ -77,15 +71,13 @@ export const updateProject = async (id, project) => {
 
   if (!response.ok) {
     throw new Error(
-      result.message ||
-        "Failed to update project"
+      result.message || "Failed to update project"
     );
   }
 
   return result;
 };
 
-// Delete project
 export const deleteProject = async (id) => {
   const response = await fetch(
     `${API_URL}/projects/${id}`,
@@ -99,8 +91,7 @@ export const deleteProject = async (id) => {
 
   if (!response.ok) {
     throw new Error(
-      result.message ||
-        "Failed to delete project"
+      result.message || "Failed to delete project"
     );
   }
 
@@ -111,7 +102,6 @@ export const deleteProject = async (id) => {
 // TASK APIs
 // =========================================================
 
-// Get all tasks
 export const getTasks = async () => {
   const response = await fetch(`${API_URL}/tasks`, {
     headers: getHeaders(),
@@ -128,7 +118,6 @@ export const getTasks = async () => {
   return result;
 };
 
-// Create task
 export const createTask = async (task) => {
   const response = await fetch(`${API_URL}/tasks`, {
     method: "POST",
@@ -149,11 +138,7 @@ export const createTask = async (task) => {
   return result;
 };
 
-// Update task status
-export const updateTaskStatus = async (
-  id,
-  status
-) => {
+export const updateTaskStatus = async (id, status) => {
   const response = await fetch(
     `${API_URL}/tasks/${id}/status`,
     {
@@ -169,15 +154,13 @@ export const updateTaskStatus = async (
 
   if (!response.ok) {
     throw new Error(
-      result.message ||
-        "Failed to update task status"
+      result.message || "Failed to update task status"
     );
   }
 
   return result;
 };
 
-// Delete task
 export const deleteTask = async (id) => {
   const response = await fetch(
     `${API_URL}/tasks/${id}`,
@@ -191,8 +174,7 @@ export const deleteTask = async (id) => {
 
   if (!response.ok) {
     throw new Error(
-      result.message ||
-        "Failed to delete task"
+      result.message || "Failed to delete task"
     );
   }
 

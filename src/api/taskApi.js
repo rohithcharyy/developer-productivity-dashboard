@@ -1,5 +1,4 @@
-const API_URL = "http://localhost:5000/api/tasks";
-
+const API_URL = "https://devdash-backend.onrender.com/api/tasks";
 const getHeaders = () => {
   const token = localStorage.getItem("devdash_token");
 
