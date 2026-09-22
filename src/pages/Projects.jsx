@@ -28,6 +28,10 @@ function Projects({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
 
+  // Delete confirmation state
+  const [projectToDelete, setProjectToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -183,34 +187,54 @@ function Projects({
   };
 
   // =========================================================
-  // DELETE PROJECT
+  // OPEN DELETE CONFIRMATION
   // =========================================================
 
-  const handleDeleteProject = async (projectId) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this project?"
-    );
+  const handleDeleteProject = (project) => {
+    setProjectToDelete(project);
+    setError("");
+  };
 
-    if (!confirmed) return;
+  // =========================================================
+  // CONFIRM DELETE PROJECT
+  // =========================================================
+
+  const confirmDeleteProject = async () => {
+    if (!projectToDelete) return;
 
     try {
+      setIsDeleting(true);
       setError("");
 
-      await deleteProject(projectId);
+      await deleteProject(projectToDelete._id);
 
       setProjectList((previousProjects) =>
         previousProjects.filter(
-          (project) => project._id !== projectId
+          (project) => project._id !== projectToDelete._id
         )
       );
+
+      setProjectToDelete(null);
     } catch (error) {
       console.error("Failed to delete project:", error);
       setError("Failed to delete project.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   // =========================================================
-  // CLOSE MODAL
+  // CLOSE DELETE CONFIRMATION
+  // =========================================================
+
+  const handleCloseDeleteModal = () => {
+    if (isDeleting) return;
+
+    setProjectToDelete(null);
+  };
+
+  // =========================================================
+  // CLOSE EDIT / CREATE MODAL
   // =========================================================
 
   const handleCloseModal = () => {
@@ -571,7 +595,7 @@ function Projects({
                         <button
                           type="button"
                           onClick={() =>
-                            handleDeleteProject(project._id)
+                            handleDeleteProject(project)
                           }
                           className="rounded-md px-2 py-1 text-xs font-semibold text-red-500 transition hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500/20 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                         >
@@ -662,7 +686,10 @@ function Projects({
 
       {isModalOpen && (
 
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+          onClick={handleCloseModal}
+        >
 
           <div
             className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
@@ -866,6 +893,118 @@ function Projects({
               </div>
 
             </form>
+
+          </div>
+
+        </div>
+
+      )}
+
+      {/* =====================================================
+          DELETE CONFIRMATION MODAL
+      ===================================================== */}
+
+      {projectToDelete && (
+
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          onClick={handleCloseDeleteModal}
+        >
+
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-project-title"
+            className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+            onClick={(event) => event.stopPropagation()}
+          >
+
+            {/* Warning Icon */}
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/50">
+
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="h-6 w-6 text-red-600 dark:text-red-400"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v4m0 4h.01M10.29 3.86l-7.82 13.5A2 2 0 004.2 20h15.6a2 2 0 001.73-2.64l-7.82-13.5a2 2 0 00-3.42 0z"
+                />
+              </svg>
+
+            </div>
+
+            {/* Title */}
+
+            <h2
+              id="delete-project-title"
+              className="mt-5 text-lg font-semibold text-slate-900 dark:text-white"
+            >
+              Delete project?
+            </h2>
+
+            {/* Message */}
+
+            <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+
+              Are you sure you want to delete{" "}
+
+              <span className="font-semibold text-slate-700 dark:text-slate-200">
+                "{projectToDelete.name}"
+              </span>
+              ?
+
+              <br />
+
+              <span className="text-xs text-slate-400 dark:text-slate-500">
+                This action cannot be undone.
+              </span>
+
+            </p>
+
+            {/* Buttons */}
+
+            <div className="mt-6 flex gap-3">
+
+              <button
+                type="button"
+                onClick={handleCloseDeleteModal}
+                disabled={isDeleting}
+                className="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={confirmDeleteProject}
+                disabled={isDeleting}
+                className="flex-1 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-600 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-slate-900"
+              >
+
+                {isDeleting ? (
+
+                  <span className="flex items-center justify-center gap-2">
+
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+
+                    Deleting...
+
+                  </span>
+
+                ) : (
+                  "Delete Project"
+                )}
+
+              </button>
+
+            </div>
 
           </div>
 

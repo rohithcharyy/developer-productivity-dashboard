@@ -25,8 +25,15 @@ function Tasks({
   darkMode,
   setDarkMode,
 }) {
+  // =========================================================
+  // STATE
+  // =========================================================
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -251,27 +258,35 @@ function Tasks({
   };
 
   // =========================================================
-  // DELETE TASK
+  // OPEN DELETE CONFIRMATION
   // =========================================================
 
-  const handleDeleteTask = async (taskId) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this task?"
-    );
+  const handleDeleteTask = (task) => {
+    setTaskToDelete(task);
+    setIsDeleteModalOpen(true);
+  };
 
-    if (!confirmed) return;
+  // =========================================================
+  // CONFIRM DELETE TASK
+  // =========================================================
+
+  const confirmDeleteTask = async () => {
+    if (!taskToDelete) return;
 
     try {
       setError("");
 
-      await deleteTask(taskId);
+      await deleteTask(taskToDelete._id);
 
       const updatedTasks = tasks.filter(
-        (task) => task._id !== taskId
+        (task) => task._id !== taskToDelete._id
       );
 
       setTaskList(updatedTasks);
       updateProjectStats(updatedTasks);
+
+      setIsDeleteModalOpen(false);
+      setTaskToDelete(null);
     } catch (error) {
       console.error("Failed to delete task:", error);
       setError("Failed to delete task.");
@@ -279,7 +294,16 @@ function Tasks({
   };
 
   // =========================================================
-  // CLOSE MODAL
+  // CLOSE DELETE MODAL
+  // =========================================================
+
+  const handleCloseDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setTaskToDelete(null);
+  };
+
+  // =========================================================
+  // CLOSE EDIT / CREATE MODAL
   // =========================================================
 
   const handleCloseModal = () => {
@@ -575,7 +599,7 @@ function Tasks({
                     <div className="mt-4 flex justify-end border-t border-slate-100 pt-4 dark:border-slate-800">
                       <button
                         type="button"
-                        onClick={() => handleDeleteTask(task._id)}
+                        onClick={() => handleDeleteTask(task)}
                         className="text-xs font-semibold text-slate-400 transition hover:text-red-500 focus:outline-none dark:text-slate-500 dark:hover:text-red-400"
                       >
                         Delete task
@@ -630,7 +654,7 @@ function Tasks({
       </div>
 
       {/* =====================================================
-          MODAL
+          CREATE / EDIT TASK MODAL
       ===================================================== */}
 
       {isModalOpen && (
@@ -805,6 +829,66 @@ function Tasks({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================
+          DELETE CONFIRMATION MODAL
+      ===================================================== */}
+
+      {isDeleteModalOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              handleCloseDeleteModal();
+            }
+          }}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            {/* Warning Icon */}
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-xl dark:bg-red-950/50">
+              ⚠️
+            </div>
+
+            {/* Content */}
+
+            <h2 className="mt-5 text-lg font-bold text-slate-900 dark:text-white">
+              Delete Task?
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-slate-700 dark:text-slate-200">
+                "{taskToDelete?.title}"
+              </span>
+              ? This action cannot be undone.
+            </p>
+
+            {/* Buttons */}
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={handleCloseDeleteModal}
+                className="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={confirmDeleteTask}
+                className="flex-1 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/30 active:scale-[0.98]"
+              >
+                Delete Task
+              </button>
+            </div>
           </div>
         </div>
       )}
